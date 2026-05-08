@@ -83,7 +83,7 @@ export default async function DashboardPage() {
           <CardHeader className="flex items-center justify-between">
             <CardTitle>응답 대기 중인 설문</CardTitle>
             <Link
-              href="/invitations"
+              href="/surveys/invitations"
               className="text-xs text-pink-400 hover:text-pink-300"
             >
               관리하기 →
@@ -190,7 +190,7 @@ export default async function DashboardPage() {
           desc="표준·커스텀 설문 편집"
         />
         <QuickLink
-          href="/send"
+          href="/surveys/send"
           title="설문 발송"
           desc="친구에게 1회용 링크 발급"
         />

@@ -56,7 +56,7 @@ export default async function InvitationsPage({
             보낸 설문의 응답 상태를 보고, 링크를 다시 보내거나 취소·삭제할 수 있어요.
           </p>
         </div>
-        <Link href="/send">
+        <Link href="/surveys/send">
           <Button>＋ 새로 보내기</Button>
         </Link>
       </div>
@@ -122,7 +122,10 @@ function Tabs({
     <div className="flex gap-1.5">
       {items.map((it) => {
         const active = it.value === tab;
-        const href = it.value === "pending" ? "/invitations" : `/invitations?status=${it.value}`;
+        const href =
+          it.value === "pending"
+            ? "/surveys/invitations"
+            : `/surveys/invitations?status=${it.value}`;
         return (
           <Link
             key={it.value}

@@ -17,7 +17,7 @@ export async function deleteInvitationAction(
   if (!parsed.success) return { ok: false, error: "잘못된 요청입니다" };
   try {
     await deleteInvitation(session.userId, parsed.data.invitationId);
-    revalidatePath("/invitations");
+    revalidatePath("/surveys/invitations");
     revalidatePath("/");
     return { ok: true };
   } catch (e) {
