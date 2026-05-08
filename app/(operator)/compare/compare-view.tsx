@@ -15,6 +15,7 @@ import {
 } from "@/lib/types/domain";
 import { upsertPairAction } from "./actions";
 import { formatDateTime } from "@/lib/utils";
+import { AnswerView } from "@/components/operator/answer-display";
 
 type Props = {
   friendA: Friend;
@@ -187,78 +188,10 @@ function AnswerCell({
         {name}
       </p>
       <div className="mt-1 text-sm text-fg">
-        <RenderAnswer value={value} question={question} />
+        <AnswerView question={question} value={value} />
       </div>
     </div>
   );
-}
-
-function RenderAnswer({
-  value,
-  question,
-}: {
-  value: unknown;
-  question: SurveyQuestion;
-}) {
-  if (value == null || value === "") {
-    return <span className="text-[var(--color-fg-subtle)]">미응답</span>;
-  }
-  if (question.type === "likert") {
-    const opts = question.options as
-      | { min: number; max: number; minLabel?: string; maxLabel?: string }
-      | null;
-    return (
-      <div className="space-y-1">
-        <span className="text-pink-400 font-semibold">{String(value)}</span>
-        {opts ? (
-          <span className="text-[11px] text-[var(--color-fg-muted)]">
-            {" "}
-            / {opts.max}
-          </span>
-        ) : null}
-        <div className="h-1 rounded-full bg-[var(--color-surface-2)] overflow-hidden">
-          <div
-            className="h-full bg-pink-500"
-            style={{
-              width:
-                opts && opts.max > opts.min
-                  ? `${((Number(value) - opts.min) / (opts.max - opts.min)) * 100}%`
-                  : "50%",
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-  if (question.type === "ranking" && Array.isArray(value)) {
-    return (
-      <ol className="list-decimal pl-5 space-y-0.5">
-        {(value as string[]).map((v, i) => (
-          <li key={i}>{v}</li>
-        ))}
-      </ol>
-    );
-  }
-  if (question.type === "mcq_multi" && Array.isArray(value)) {
-    return (
-      <ul className="flex flex-wrap gap-1">
-        {(value as string[]).map((v, i) => (
-          <li
-            key={i}
-            className="rounded bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[11px]"
-          >
-            {v}
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  if (question.type === "text" && typeof value === "string") {
-    return (
-      <p className="whitespace-pre-wrap text-[13px]">{value}</p>
-    );
-  }
-  return <span>{String(value)}</span>;
 }
 
 function compareValues(
