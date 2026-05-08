@@ -10,6 +10,7 @@ const links = [
   { href: "/friends", label: "친구" },
   { href: "/surveys", label: "설문" },
   { href: "/send", label: "발송" },
+  { href: "/invitations", label: "발송 이력" },
   { href: "/matches", label: "매칭 이력" },
 ];
 
