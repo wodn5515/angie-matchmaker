@@ -40,7 +40,7 @@ export default async function MatchesPage({
       <div>
         <p className="text-xs text-[var(--color-fg-muted)]">매칭 이력</p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          소개한 쌍 ({pairs.length})
+          💘 큐피드 발동 ({pairs.length})
         </h1>
       </div>
 
@@ -66,7 +66,10 @@ export default async function MatchesPage({
       </div>
 
       {pairs.length === 0 ? (
-        <EmptyState title="매칭 이력이 없어요" description="비교 뷰에서 '소개 기록' 버튼을 눌러보세요." />
+        <EmptyState
+          title="아직 큐피드 발동된 쌍이 없어요"
+          description="비교 뷰에서 '💘 큐피드' 버튼을 눌러보세요."
+        />
       ) : (
         <Card>
           <CardHeader>

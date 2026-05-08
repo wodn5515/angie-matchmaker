@@ -54,44 +54,82 @@ export function CompareView({
     return m;
   }, [questions]);
 
+  const totalQuestions = questions.length;
+  const answeredBoth = questions.filter((q) => {
+    const va = ansAByQ.get(q.id);
+    const vb = ansBByQ.get(q.id);
+    const has = (v: unknown) =>
+      v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
+    return has(va) && has(vb);
+  }).length;
+
+  const [surveyOpen, setSurveyOpen] = useState(true);
+
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>표준 설문 답변 비교</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-5">
-          {chapters.length === 0 ? (
-            <p className="text-xs text-[var(--color-fg-muted)]">
-              표준 설문에 챕터가 없어요.
+        <button
+          type="button"
+          onClick={() => setSurveyOpen((v) => !v)}
+          aria-expanded={surveyOpen}
+          className="w-full px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between gap-3 text-left hover:bg-[var(--color-surface-2)]/30 transition"
+        >
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-fg">
+              표준 설문 답변 비교
+            </h2>
+            <p className="mt-0.5 text-[11px] text-[var(--color-fg-muted)]">
+              {totalQuestions === 0
+                ? "표준 설문이 비어 있어요"
+                : `둘 다 응답한 문항 ${answeredBoth}/${totalQuestions}`}
             </p>
-          ) : (
-            chapters.map((c, ci) => {
-              const qs = questionsByChapter.get(c.id) ?? [];
-              if (qs.length === 0) return null;
-              return (
-                <div key={c.id} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="pink">챕터 {ci + 1}</Badge>
-                    <h3 className="text-sm font-semibold text-fg">{c.title}</h3>
+          </div>
+          <span
+            aria-hidden
+            className={
+              "text-[var(--color-fg-muted)] transition-transform " +
+              (surveyOpen ? "rotate-180" : "")
+            }
+          >
+            ▾
+          </span>
+        </button>
+        {surveyOpen ? (
+          <CardBody className="space-y-5">
+            {chapters.length === 0 ? (
+              <p className="text-xs text-[var(--color-fg-muted)]">
+                표준 설문에 챕터가 없어요.
+              </p>
+            ) : (
+              chapters.map((c, ci) => {
+                const qs = questionsByChapter.get(c.id) ?? [];
+                if (qs.length === 0) return null;
+                return (
+                  <div key={c.id} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="pink">챕터 {ci + 1}</Badge>
+                      <h3 className="text-sm font-semibold text-fg">
+                        {c.title}
+                      </h3>
+                    </div>
+                    <ul className="space-y-3">
+                      {qs.map((q) => (
+                        <CompareRow
+                          key={q.id}
+                          question={q}
+                          valueA={ansAByQ.get(q.id) ?? null}
+                          valueB={ansBByQ.get(q.id) ?? null}
+                          nameA={friendA.name}
+                          nameB={friendB.name}
+                        />
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="space-y-3">
-                    {qs.map((q) => (
-                      <CompareRow
-                        key={q.id}
-                        question={q}
-                        valueA={ansAByQ.get(q.id) ?? null}
-                        valueB={ansBByQ.get(q.id) ?? null}
-                        nameA={friendA.name}
-                        nameB={friendB.name}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              );
-            })
-          )}
-        </CardBody>
+                );
+              })
+            )}
+          </CardBody>
+        ) : null}
       </Card>
 
       <PairPanel friendA={friendA} friendB={friendB} pair={pair} />
@@ -302,7 +340,7 @@ function PairPanel({
         // Roll back optimistic UI on failure.
         setIntroduced(prev);
         setIntroducedAt(prevAt);
-        setSaveError("소개 기록 저장 실패");
+        setSaveError("큐피드 저장 실패");
       }
     });
   };
@@ -331,7 +369,7 @@ function PairPanel({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle>이 비교에 대한 메모 / 매칭 액션</CardTitle>
+            <CardTitle>비교 메모 / 큐피드</CardTitle>
             <p
               className={
                 "mt-0.5 text-[11px] " +
@@ -355,7 +393,7 @@ function PairPanel({
             onClick={onIntroducedToggle}
             disabled={pending}
           >
-            {introduced ? "소개 취소" : "💞 소개 기록"}
+            {introduced ? "큐피드 취소" : "💘 큐피드"}
           </Button>
         </div>
       </CardHeader>
@@ -373,8 +411,8 @@ function PairPanel({
           <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-3 space-y-3">
             <p className="text-[11px] text-[var(--color-fg-muted)]">
               {introducedAt
-                ? `소개일: ${formatDateTime(introducedAt)}`
-                : "소개 기록됨"}
+                ? `💘 큐피드 발동: ${formatDateTime(introducedAt)}`
+                : "💘 큐피드 발동됨"}
             </p>
             <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
               <div>
