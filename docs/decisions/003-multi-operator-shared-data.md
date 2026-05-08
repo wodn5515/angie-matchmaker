@@ -1,6 +1,6 @@
 ---
 name: 003 — Multi-operator emails with shared site data
-description: OPERATOR_EMAIL을 CSV로 받고, 등록된 모든 이메일이 같은 site owner_id를 공유하도록 설계. 사용자 명시 요구.
+description: OPERATOR_EMAIL을 CSV로 받고, 등록된 모든 이메일이 같은 site owner_id (하드코딩 상수)를 공유하도록 단순 설계.
 type: project
 ---
 
@@ -8,47 +8,39 @@ type: project
 
 ## Decision
 
-`OPERATOR_EMAIL` 환경변수가 콤마 구분 CSV를 지원하고, 등록된 모든 이메일은 **하나의 논리적 사이트 운영자**로 동작한다. 즉 누가 로그인하든 같은 데이터(friends/surveys/pairs/...)를 본다.
+`OPERATOR_EMAIL` 환경변수가 콤마 구분 CSV를 지원한다. 등록된 모든 이메일은 동일한 **하드코딩된 사이트 owner_id** 로 동작 → 데이터(friends/surveys/pairs)를 공유한다.
 
 ## Why
 
 사용자 요구: "운영자 이메일은 여러개를 등록할 수 있도록 해줘 이름은 그냥 사이트의 운영자의 하나의 이름으로 쓸 수 있으면 돼".
 
-"사이트의 운영자의 하나의 이름" 이라는 표현은 사이트 자체가 단일 운영자 entity라는 의미. 따라서:
-
-- 다중 사용자 ≠ 다중 테넌트
-- 여러 명이 같은 사이트를 함께 운영 (예: 부부, 친구, 팀 협업)
-- 데이터는 하나로 공유
+**가장 단순한 형태**: 사이트는 단일 테넌트, 멀티 사용자. 데이터는 한 덩어리. 운영자 화이트리스트만 관리하면 됨.
 
 ## How
 
 ### 1. Email parsing (CSV)
-`lib/auth/operator.ts` 에서 `OPERATOR_EMAIL` 을 콤마로 split 후 normalize. `isOperatorEmail(email)` 이 리스트 inclusion 체크.
+`lib/auth/operator.ts` 가 `OPERATOR_EMAIL` 을 콤마로 split 후 lowercase + trim. `isOperatorEmail(email)` 이 리스트 inclusion 체크.
 
-### 2. Shared owner_id (lazy-init)
-새 테이블 `site_owner` (singleton, id=1):
-- 첫 로그인한 운영자의 `auth.users.id` 가 `site_owner.user_id` 로 저장됨
-- 이후 모든 운영자 세션은 이 `site_owner.user_id` 를 `OperatorSession.userId` 로 받음
-- 모든 DB 쿼리는 `session.userId` 를 `owner_id` 로 사용 → 같은 데이터셋
-
-`auth.users.id` 자체는 `OperatorSession.authUserId` 에 별도 보관 (감사/로깅 용도, 아직 미사용).
+### 2. Fixed site owner_id
+```ts
+const SITE_OWNER_ID = "11111111-1111-1111-1111-111111111111";
+```
+모든 whitelisted 운영자의 `OperatorSession.userId` 가 이 값으로 고정. 모든 DB 쿼리는 이 값을 `owner_id` 로 사용 → 같은 데이터셋. Auth user id 자체는 의도적으로 owner_id 로 쓰지 않음.
 
 ### 3. Display name (공유)
 `OPERATOR_DISPLAY_NAME` 그대로. 친구한테 보일 인사말은 모든 운영자 공통.
 
-## Migration considerations
+## Trade-offs
 
-- 첫 운영자 로그인 시점에 `site_owner` row가 lazy-create됨. 그 이전엔 row 없음.
-- 만약 누군가가 site_owner 초기화 전에 데이터를 직접 SQL로 넣었다면, 그 owner_id가 `site_owner.user_id` 와 다를 수 있음 → 데이터 격리될 수 있음. 신규 배포에서는 발생할 일 없음.
-- `site_owner.user_id` 를 변경하면 기존 데이터가 모두 새 owner의 시야에서 사라짐. 의도적으로 마이그레이션할 때만 수정 가능 (서비스 키로 직접 SQL).
+- **장점**: 추가 테이블/마이그레이션/race-condition handling 불필요. 코드 한 두 줄 변경.
+- **단점**: V2에서 다중 테넌트로 확장하려면 owner_id 처리 다시 손봐야 함. 그러나 PRD §9 에서 다중 운영자는 V1 non-goal로 명시했으므로 OK.
 
-## Alternatives considered
+## Alternatives considered (모두 reject)
 
-- **각 운영자 데이터 격리** (multi-tenant): 더 단순하지만 사용자 의도("사이트의 운영자")와 불일치. 보류.
-- **SITE_OWNER_ID 환경변수**: 사용자가 UUID 직접 생성/관리해야 함. 비개발자 운영자에게 부담.
-- **첫 이메일을 owner**: 환경변수 순서 의존. 이메일 추가/삭제 시 깨질 위험.
-- **lazy-init via site_owner table** ✓ 선택
+- **각 운영자 데이터 격리 (멀티 테넌트)**: 사용자 의도("사이트의 운영자")와 불일치
+- **lazy-init via site_owner table**: 처음 시도했던 방식. 마이그레이션·race handling 등 오버엔지니어링이라 폐기
+- **SITE_OWNER_ID 환경변수**: 사용자(비개발자)가 UUID 직접 관리해야 함
 
 ## How to apply
 
-기능 추가/수정 시 `session.userId` (= shared owner_id) 가 항상 같다는 점만 의식하면 기존 코드 그대로 동작. `authUserId` 가 필요한 경우 (예: 누가 어떤 행동을 했는지 감사) 그때 활용.
+기능 추가/수정 시 `session.userId` (= 하드코딩 SITE_OWNER_ID) 가 항상 같다는 점만 의식하면 기존 코드 그대로 동작.
