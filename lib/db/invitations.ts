@@ -223,6 +223,105 @@ export async function deleteInvitation(
   if (error) throw error;
 }
 
+export type CompletedInvitationBundle = {
+  invitation: SurveyInvitation;
+  survey: Survey;
+  chapters: SurveyChapter[];
+  questions: SurveyQuestion[];
+  answers: SurveyAnswer[];
+};
+
+/**
+ * Load all completed invitations for a friend, each with its full survey
+ * structure (chapters/questions) and the friend's answers. Batched into
+ * O(5) queries regardless of invitation count.
+ */
+export async function listCompletedInvitationsWithAnswers(
+  friendId: string,
+): Promise<CompletedInvitationBundle[]> {
+  const sb = createSupabaseServiceClient();
+
+  const { data: invs, error: invErr } = await sb
+    .from("survey_invitations")
+    .select("*")
+    .eq("friend_id", friendId)
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false, nullsFirst: false });
+  if (invErr) throw invErr;
+  const invitations = (invs ?? []) as SurveyInvitation[];
+  if (invitations.length === 0) return [];
+
+  const surveyIds = Array.from(new Set(invitations.map((i) => i.survey_id)));
+  const invIds = invitations.map((i) => i.id);
+
+  const [surveysRes, chaptersRes, answersRes] = await Promise.all([
+    sb.from("surveys").select("*").in("id", surveyIds),
+    sb
+      .from("survey_chapters")
+      .select("*")
+      .in("survey_id", surveyIds)
+      .order("order_index", { ascending: true }),
+    sb.from("survey_answers").select("*").in("invitation_id", invIds),
+  ]);
+  if (surveysRes.error) throw surveysRes.error;
+  if (chaptersRes.error) throw chaptersRes.error;
+  if (answersRes.error) throw answersRes.error;
+
+  const chapters = (chaptersRes.data ?? []) as SurveyChapter[];
+  const chapterIds = chapters.map((c) => c.id);
+
+  let questions: SurveyQuestion[] = [];
+  if (chapterIds.length > 0) {
+    const { data: qs, error: qErr } = await sb
+      .from("survey_questions")
+      .select("*")
+      .in("chapter_id", chapterIds)
+      .order("order_index", { ascending: true });
+    if (qErr) throw qErr;
+    questions = (qs ?? []) as SurveyQuestion[];
+  }
+
+  const surveyById = new Map(
+    ((surveysRes.data ?? []) as Survey[]).map((s) => [s.id, s] as const),
+  );
+  const chaptersBySurvey = new Map<string, SurveyChapter[]>();
+  for (const c of chapters) {
+    const arr = chaptersBySurvey.get(c.survey_id) ?? [];
+    arr.push(c);
+    chaptersBySurvey.set(c.survey_id, arr);
+  }
+  const questionsByChapter = new Map<string, SurveyQuestion[]>();
+  for (const q of questions) {
+    const arr = questionsByChapter.get(q.chapter_id) ?? [];
+    arr.push(q);
+    questionsByChapter.set(q.chapter_id, arr);
+  }
+  const answersByInvitation = new Map<string, SurveyAnswer[]>();
+  for (const a of (answersRes.data ?? []) as SurveyAnswer[]) {
+    const arr = answersByInvitation.get(a.invitation_id) ?? [];
+    arr.push(a);
+    answersByInvitation.set(a.invitation_id, arr);
+  }
+
+  return invitations
+    .map((inv) => {
+      const survey = surveyById.get(inv.survey_id);
+      if (!survey) return null;
+      const surveyChapters = chaptersBySurvey.get(survey.id) ?? [];
+      const surveyQuestions = surveyChapters.flatMap(
+        (c) => questionsByChapter.get(c.id) ?? [],
+      );
+      return {
+        invitation: inv,
+        survey,
+        chapters: surveyChapters,
+        questions: surveyQuestions,
+        answers: answersByInvitation.get(inv.id) ?? [],
+      } satisfies CompletedInvitationBundle;
+    })
+    .filter((b): b is CompletedInvitationBundle => b !== null);
+}
+
 export async function listAnswersForFriendOnSurvey(
   friendId: string,
   surveyId: string,
