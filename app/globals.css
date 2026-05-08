@@ -48,6 +48,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Tailwind v4 removed the default `cursor: pointer` on buttons. Restore it
+   for enabled interactive elements so the UI feels clickable across the app.
+   Disabled buttons keep the default cursor (accessibility-correct). */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  summary:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
 /* Friend-facing survey body wrapper opts into a softer gradient */
 .friend-shell {
   background:
