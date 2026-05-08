@@ -83,10 +83,10 @@ export default async function DashboardPage() {
           <CardHeader className="flex items-center justify-between">
             <CardTitle>응답 대기 중인 설문</CardTitle>
             <Link
-              href="/send"
+              href="/invitations"
               className="text-xs text-pink-400 hover:text-pink-300"
             >
-              발송하러 가기
+              관리하기 →
             </Link>
           </CardHeader>
           <CardBody className="p-0">

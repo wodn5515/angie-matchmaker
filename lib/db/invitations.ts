@@ -190,6 +190,39 @@ export async function upsertAnswer(
   if (error) throw error;
 }
 
+/**
+ * Hard-delete an invitation. Verifies the invitation's friend belongs to
+ * the given owner before deleting. ON DELETE CASCADE handles answers.
+ */
+export async function deleteInvitation(
+  ownerId: string,
+  invitationId: string,
+): Promise<void> {
+  const sb = createSupabaseServiceClient();
+  const { data: inv, error: invErr } = await sb
+    .from("survey_invitations")
+    .select("id, friend_id")
+    .eq("id", invitationId)
+    .maybeSingle();
+  if (invErr) throw invErr;
+  if (!inv) throw new Error("Invitation not found");
+
+  const { data: friend, error: friendErr } = await sb
+    .from("friends")
+    .select("id")
+    .eq("id", inv.friend_id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  if (friendErr) throw friendErr;
+  if (!friend) throw new Error("Not authorized");
+
+  const { error } = await sb
+    .from("survey_invitations")
+    .delete()
+    .eq("id", invitationId);
+  if (error) throw error;
+}
+
 export async function listAnswersForFriendOnSurvey(
   friendId: string,
   surveyId: string,
