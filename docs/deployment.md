@@ -97,10 +97,12 @@ cp .env.example .env.local
 NEXT_PUBLIC_SUPABASE_URL=https://abcd1234.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...   # 1.3 publishable key
 SUPABASE_SECRET_KEY=sb_secret_...                          # 1.3 secret key (서버 전용)
-OPERATOR_EMAIL=operator@gmail.com                          # 실제 운영자 Gmail
-OPERATOR_DISPLAY_NAME=민수                                  # 친구한테 인사할 때 보일 이름
+OPERATOR_EMAIL=operator@gmail.com                          # 단일, 또는 콤마 구분: a@x,b@y
+OPERATOR_DISPLAY_NAME=민수                                  # 친구한테 인사할 때 보일 이름 (운영자 모두 공유)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+> **여러 명이 운영자로 로그인하려면**: `OPERATOR_EMAIL` 에 콤마로 구분해 여러 Gmail을 등록하세요. 등록된 모두가 같은 데이터(친구·설문·매칭)를 공유합니다 — 첫 로그인한 사람의 user.id가 site owner_id로 자동 채택되고, 이후 모든 운영자가 그 owner_id로 작업합니다.
 
 ### 3.2 실행
 
