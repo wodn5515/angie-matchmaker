@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOperator } from "@/lib/auth/operator";
 import { getFriend, listFriends, profileCompletion } from "@/lib/db/friends";
-import { listInvitationsForFriend } from "@/lib/db/invitations";
+import {
+  listCompletedInvitationsWithAnswers,
+  listInvitationsForFriend,
+} from "@/lib/db/invitations";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatDateTime } from "@/lib/utils";
 import {
   GENDER_LABEL,
   PREFERRED_GENDER_LABEL,
@@ -15,6 +17,7 @@ import {
 } from "@/lib/types/domain";
 import { DeleteFriendButton } from "./delete-button";
 import { ComparePicker } from "./compare-picker";
+import { InvitationHistory } from "./invitation-history";
 
 export const dynamic = "force-dynamic";
 
@@ -25,15 +28,20 @@ export default async function FriendDetailPage({
 }) {
   const { id } = await params;
   const session = await requireOperator();
-  const [friend, otherFriends, invitations] = await Promise.all([
-    getFriend(session.userId, id),
-    listFriends(session.userId),
-    listInvitationsForFriend(id),
-  ]);
+  const [friend, otherFriends, invitations, completedBundles] =
+    await Promise.all([
+      getFriend(session.userId, id),
+      listFriends(session.userId),
+      listInvitationsForFriend(id),
+      listCompletedInvitationsWithAnswers(id),
+    ]);
   if (!friend) notFound();
 
   const others = otherFriends.filter((f) => f.id !== friend.id);
   const pct = profileCompletion(friend);
+  const pendingInvitations = invitations.filter(
+    (i) => i.status !== "completed",
+  );
 
   return (
     <div className="space-y-5">
@@ -162,51 +170,10 @@ export default async function FriendDetailPage({
           </Link>
         </CardHeader>
         <CardBody className="p-0">
-          {invitations.length === 0 ? (
-            <p className="px-5 py-8 text-center text-xs text-[var(--color-fg-muted)]">
-              아직 발송 이력이 없어요.
-            </p>
-          ) : (
-            <ul className="divide-y divide-[var(--color-border)]">
-              {invitations.map((inv) => (
-                <li
-                  key={inv.id}
-                  className="flex items-center justify-between gap-3 px-5 py-3 text-sm"
-                >
-                  <div className="min-w-0">
-                    <p className="text-fg">
-                      {inv.status === "completed"
-                        ? "응답 완료"
-                        : inv.status === "in_progress"
-                          ? "응답 중"
-                          : "미응답"}
-                    </p>
-                    <p className="text-[11px] text-[var(--color-fg-muted)]">
-                      발송 {formatDateTime(inv.created_at)}
-                      {inv.completed_at
-                        ? ` · 완료 ${formatDateTime(inv.completed_at)}`
-                        : ""}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      inv.status === "completed"
-                        ? "success"
-                        : inv.status === "in_progress"
-                          ? "warn"
-                          : "outline"
-                    }
-                  >
-                    {inv.status === "completed"
-                      ? "완료"
-                      : inv.status === "in_progress"
-                        ? "진행중"
-                        : "대기"}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
+          <InvitationHistory
+            pendingInvitations={pendingInvitations}
+            completedBundles={completedBundles}
+          />
         </CardBody>
       </Card>
     </div>
