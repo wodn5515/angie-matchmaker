@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireOperator } from "@/lib/auth/operator";
-import {
-  getFriendsByIds,
-  listFriends,
-  profileCompletion,
-} from "@/lib/db/friends";
+import { getFriendsByIds, listFriends } from "@/lib/db/friends";
 import {
   ensureStandardSurvey,
   listChapters,
@@ -13,10 +9,9 @@ import {
 } from "@/lib/db/surveys";
 import { listAnswersForFriendOnSurvey } from "@/lib/db/invitations";
 import { getOrCreatePair } from "@/lib/db/pairs";
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CompareSelector } from "./selector";
 import { CompareView } from "./compare-view";
+import { MetadataComparison } from "./metadata-comparison";
 
 export const dynamic = "force-dynamic";
 
@@ -57,8 +52,6 @@ export default async function ComparePage({
     getOrCreatePair(session.userId, friendA.id, friendB.id),
   ]);
 
-  // The pair stores friend_a_id < friend_b_id canonical order.
-  // Make sure the UI shows them in the URL order regardless.
   return (
     <div className="space-y-5">
       <div>
@@ -73,10 +66,7 @@ export default async function ComparePage({
         </h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <FriendBrief friend={friendA} pct={profileCompletion(friendA)} />
-        <FriendBrief friend={friendB} pct={profileCompletion(friendB)} />
-      </div>
+      <MetadataComparison friendA={friendA} friendB={friendB} />
 
       <CompareView
         friendA={friendA}
@@ -88,54 +78,5 @@ export default async function ComparePage({
         pair={pair}
       />
     </div>
-  );
-}
-
-function FriendBrief({
-  friend,
-  pct,
-}: {
-  friend: {
-    id: string;
-    name: string;
-    notes: string | null;
-    region: string | null;
-    occupation: string | null;
-    birth_year: number | null;
-    tags: string[] | null;
-  };
-  pct: number;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{friend.name}</CardTitle>
-        <p className="mt-0.5 text-[11px] text-[var(--color-fg-muted)]">
-          {friend.birth_year ? `${friend.birth_year}년생 · ` : ""}
-          {friend.region ?? ""}
-          {friend.occupation ? ` · ${friend.occupation}` : ""}
-        </p>
-      </CardHeader>
-      <CardBody className="space-y-2">
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-[var(--color-fg-muted)]">완성도</span>
-          <span className="text-pink-400 font-medium">{pct}%</span>
-        </div>
-        {(friend.tags ?? []).length > 0 ? (
-          <div className="flex flex-wrap gap-1">
-            {(friend.tags ?? []).slice(0, 4).map((t) => (
-              <Badge key={t} variant="neutral">
-                #{t}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
-        {friend.notes ? (
-          <p className="text-[11px] text-[var(--color-fg-muted)] line-clamp-3 whitespace-pre-wrap">
-            {friend.notes}
-          </p>
-        ) : null}
-      </CardBody>
-    </Card>
   );
 }
