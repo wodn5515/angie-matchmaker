@@ -46,8 +46,8 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (`sb_publishable_…`). 브라우저 노출 OK |
 | `SUPABASE_SECRET_KEY` | Supabase secret key (`sb_secret_…`). **서버 전용, 절대 NEXT_PUBLIC_ 금지** |
-| `OPERATOR_EMAIL` | 운영자 Gmail. 이 계정만 로그인 가능 |
-| `OPERATOR_DISPLAY_NAME` | 친구 인사말에 들어갈 운영자 이름 |
+| `OPERATOR_EMAIL` | 운영자 Gmail. **콤마로 구분해 여러 개 등록 가능**. 모두 같은 데이터를 공유 |
+| `OPERATOR_DISPLAY_NAME` | 친구 인사말에 들어갈 운영자 이름 (운영자 모두 공유) |
 | `NEXT_PUBLIC_APP_URL` | 토큰 링크 만들 때 쓰는 base URL (개발: `http://localhost:3000`) |
 
 > 레거시 키(`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`)도 fallback으로 동작합니다. 신규 프로젝트는 publishable/secret 권장.

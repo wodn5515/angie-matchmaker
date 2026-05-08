@@ -163,7 +163,7 @@ export default async function FriendDetailPage({
         <CardHeader className="flex items-center justify-between">
           <CardTitle>설문 발송 / 응답 이력</CardTitle>
           <Link
-            href={`/send?friendId=${friend.id}`}
+            href={`/surveys/send?friendId=${friend.id}`}
             className="text-xs text-pink-400 hover:text-pink-300"
           >
             새 설문 보내기 →
