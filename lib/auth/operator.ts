@@ -1,14 +1,12 @@
 import { redirect } from "next/navigation";
-import {
-  createSupabaseServerClient,
-  createSupabaseServiceClient,
-} from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
  * Whitelist of operator emails. The OPERATOR_EMAIL env var accepts either a
  * single email or a comma-separated list. Multiple operators share one site
- * display name (OPERATOR_DISPLAY_NAME) AND one logical site owner_id — they
- * collaborate on the same data (friends/surveys/pairs).
+ * display name AND one fixed site owner_id — they collaborate on the same
+ * data (friends/surveys/pairs). The auth user id of whoever logged in is
+ * intentionally not used as owner_id.
  */
 const OPERATOR_EMAILS: string[] = (process.env.OPERATOR_EMAIL ?? "")
   .split(",")
@@ -18,46 +16,20 @@ const OPERATOR_EMAILS: string[] = (process.env.OPERATOR_EMAIL ?? "")
 export const OPERATOR_DISPLAY_NAME =
   process.env.OPERATOR_DISPLAY_NAME ?? "운영자";
 
+/**
+ * Fixed site-wide owner_id. Every whitelisted operator's session resolves
+ * to this same id, so they all read/write the same dataset. Hardcoded
+ * because the site is single-tenant by design (multi-tenant SaaS is
+ * explicitly out of V1 scope).
+ */
+const SITE_OWNER_ID = "11111111-1111-1111-1111-111111111111";
+
 export type OperatorSession = {
-  /**
-   * Logical site owner_id. Identical across every whitelisted operator so
-   * they share data. Lazily initialized on the first operator's sign-in.
-   */
+  /** Site-wide owner_id, identical across all operators. */
   userId: string;
-  /** Auth-level user id of the currently logged-in operator. */
-  authUserId: string;
   email: string;
   displayName: string;
 };
-
-/**
- * Resolve the shared site owner_id, initializing it on first use to the
- * current operator's auth.users.id. Subsequent operators get the same id.
- */
-async function getOrInitSiteOwnerId(currentUserId: string): Promise<string> {
-  const sb = createSupabaseServiceClient();
-  const { data: existing, error: readErr } = await sb
-    .from("site_owner")
-    .select("user_id")
-    .eq("id", 1)
-    .maybeSingle();
-  if (readErr) throw readErr;
-  if (existing?.user_id) return existing.user_id as string;
-
-  const { error: insErr } = await sb
-    .from("site_owner")
-    .insert({ id: 1, user_id: currentUserId });
-  if (insErr) {
-    // Likely a race with another operator's first request. Re-read.
-    const { data: again } = await sb
-      .from("site_owner")
-      .select("user_id")
-      .eq("id", 1)
-      .maybeSingle();
-    return (again?.user_id as string | undefined) ?? currentUserId;
-  }
-  return currentUserId;
-}
 
 /**
  * Returns null if the current session does not belong to a whitelisted operator.
@@ -72,11 +44,8 @@ export async function getOperatorOrNull(): Promise<OperatorSession | null> {
   if (!user?.email) return null;
   if (!isOperatorEmail(user.email)) return null;
 
-  const sharedOwnerId = await getOrInitSiteOwnerId(user.id);
-
   return {
-    userId: sharedOwnerId,
-    authUserId: user.id,
+    userId: SITE_OWNER_ID,
     email: user.email,
     displayName: OPERATOR_DISPLAY_NAME,
   };
