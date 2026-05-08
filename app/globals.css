@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand: Black base + Pink accent */
+  --color-bg: #0a0a0b;
+  --color-surface: #131316;
+  --color-surface-2: #1c1c21;
+  --color-border: #2a2a31;
+  --color-border-strong: #3a3a44;
+  --color-fg: #ededee;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+
+  --color-pink-50: #fff1f5;
+  --color-pink-100: #ffe1ec;
+  --color-pink-200: #ffc2d8;
+  --color-pink-300: #ff94bb;
+  --color-pink-400: #ff5e95;
+  --color-pink-500: #ff2d7a;
+  --color-pink-600: #ed1166;
+  --color-pink-700: #c50951;
+  --color-pink-800: #a3094a;
+  --color-pink-900: #870b41;
+
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-warn: #fbbf24;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Friend-facing survey body wrapper opts into a softer gradient */
+.friend-shell {
+  background:
+    radial-gradient(80% 60% at 50% 0%, rgba(255, 45, 122, 0.15), transparent 70%),
+    radial-gradient(60% 50% at 100% 100%, rgba(255, 45, 122, 0.08), transparent 70%),
+    var(--color-bg);
+}
+
+/* Utility classes used in components */
+@layer utilities {
+  .pink-glow {
+    box-shadow: 0 0 0 1px rgba(255, 45, 122, 0.4),
+      0 8px 32px -8px rgba(255, 45, 122, 0.45);
+  }
+  .ring-pink {
+    box-shadow: 0 0 0 2px var(--color-pink-500);
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 3px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
