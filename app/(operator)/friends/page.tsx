@@ -38,16 +38,21 @@ export default async function FriendsPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs text-[var(--color-fg-muted)]">친구 관리</p>
           <h1 className="text-2xl font-semibold tracking-tight">
             친구 ({all.length})
           </h1>
         </div>
-        <Link href="/friends/new">
-          <Button>＋ 새 친구</Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/friends/invites">
+            <Button variant="secondary">🔗 등록 링크</Button>
+          </Link>
+          <Link href="/friends/new">
+            <Button>＋ 새 친구</Button>
+          </Link>
+        </div>
       </div>
 
       <FriendsFilter q={sp.q ?? ""} gender={sp.gender ?? "all"} mi={sp.mi ?? "all"} />
@@ -56,11 +61,16 @@ export default async function FriendsPage({
         all.length === 0 ? (
           <EmptyState
             title="아직 등록된 친구가 없어요"
-            description="첫 친구를 등록해보세요. 이름, 성별, 선호 성별만 있어도 시작할 수 있어요."
+            description="직접 등록하거나, 친구한테 자가 등록 링크를 보낼 수 있어요."
             action={
-              <Link href="/friends/new">
-                <Button>＋ 새 친구 등록</Button>
-              </Link>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Link href="/friends/new">
+                  <Button>＋ 직접 등록</Button>
+                </Link>
+                <Link href="/friends/invites">
+                  <Button variant="secondary">🔗 등록 링크 만들기</Button>
+                </Link>
+              </div>
             }
           />
         ) : (
