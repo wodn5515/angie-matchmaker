@@ -26,12 +26,7 @@ export default async function EditFriendPage({
           {friend.name} 수정
         </h1>
       </div>
-      <FriendForm
-        initial={friend}
-        action={action}
-        submitLabel="저장"
-        redirectAfter={(fid) => `/friends/${fid}`}
-      />
+      <FriendForm initial={friend} action={action} submitLabel="저장" />
     </div>
   );
 }

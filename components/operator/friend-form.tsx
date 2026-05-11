@@ -21,12 +21,10 @@ export function FriendForm({
   initial,
   action,
   submitLabel = "저장",
-  redirectAfter,
 }: {
   initial?: Partial<Friend>;
   action: ActionFn;
   submitLabel?: string;
-  redirectAfter?: (friendId: string) => string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -53,10 +51,7 @@ export function FriendForm({
         setError(res.error);
         return;
       }
-      const target = redirectAfter
-        ? redirectAfter(res.friendId)
-        : `/friends/${res.friendId}`;
-      router.push(target);
+      router.push(`/friends/${res.friendId}`);
     });
   };
 
