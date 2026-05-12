@@ -59,11 +59,21 @@ body {
   }
 }
 
-/* Friend-facing survey body wrapper opts into a softer gradient */
+/* Friend-facing survey body wrapper opts into a softer gradient (V1, kept until /r/[token]·/s/[token] are dropped in task-F) */
 .friend-shell {
   background:
     radial-gradient(80% 60% at 50% 0%, rgba(255, 45, 122, 0.15), transparent 70%),
     radial-gradient(60% 50% at 100% 100%, rgba(255, 45, 122, 0.08), transparent 70%),
+    var(--color-bg);
+}
+
+/* V2 가입자(self-signup user) 측 wrapper — 친구 → 가입자 의미 변화 반영.
+   V1 .friend-shell 톤을 계승하되 게이미피케이션 결을 챕터 별 페이지에서 한층 강조한다. */
+.user-shell {
+  background:
+    radial-gradient(85% 65% at 50% 0%, rgba(255, 45, 122, 0.18), transparent 70%),
+    radial-gradient(60% 50% at 100% 100%, rgba(255, 45, 122, 0.08), transparent 70%),
+    radial-gradient(50% 40% at 0% 30%, rgba(255, 148, 187, 0.05), transparent 70%),
     var(--color-bg);
 }
 
@@ -72,6 +82,10 @@ body {
   .pink-glow {
     box-shadow: 0 0 0 1px rgba(255, 45, 122, 0.4),
       0 8px 32px -8px rgba(255, 45, 122, 0.45);
+  }
+  .pink-soft-glow {
+    box-shadow: 0 0 0 1px rgba(255, 45, 122, 0.18),
+      0 6px 24px -10px rgba(255, 45, 122, 0.35);
   }
   .ring-pink {
     box-shadow: 0 0 0 2px var(--color-pink-500);
@@ -87,6 +101,24 @@ body {
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background: var(--color-border-strong);
     border-radius: 3px;
+  }
+
+  /* 비교 뷰 시각 단서 (D-001 §D9 + PRD §6.5) — 셀 배경 / 점 인디케이터 공용 */
+  .match-cell-same {
+    background-color: color-mix(in srgb, var(--color-success) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+  }
+  .match-cell-partial {
+    background-color: color-mix(in srgb, var(--color-warn) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-warn) 35%, transparent);
+  }
+  .match-cell-different {
+    background-color: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
+  }
+  .match-cell-neutral {
+    background-color: color-mix(in srgb, var(--color-fg-muted) 6%, transparent);
+    border-color: var(--color-border);
   }
 }
 
