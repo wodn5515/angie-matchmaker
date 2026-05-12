@@ -238,7 +238,31 @@ Agent({
 })
 ```
 
-### 5-5. 팀 spawn 시 worker 프롬프트 필수 포함
+### 5-5. 문서 동기화 책임 매트릭스 (코드 변경 시)
+
+| 문서 / 섹션 | 누가 갱신 | 갱신 시점 |
+|---|---|---|
+| `README.md` 전체 | **worker** | 같은 PR 안에서 |
+| `CLAUDE.md` §3 기술 스택 | **worker** | 새 라이브러리/도구 도입·교체 시 |
+| `CLAUDE.md` §4 디렉토리 구조 | **worker** | 새 최상위 폴더 생성 시 |
+| `CLAUDE.md` §6 데이터 모델 | **worker** | 마이그레이션(`supabase/migrations/**`)과 짝 |
+| `CLAUDE.md` §7 라우팅 / 사이트맵 | **worker** | 새 라우트 추가/이동/제거 시 |
+| `CLAUDE.md` §11 환경 변수 | **worker** | 새 env 추가/이름 변경/제거 시 |
+| `CLAUDE.md` §1 컨셉 / §2 핵심 가치 | Lead (`/meta`) | 정책 변경 — 별도 PR |
+| `CLAUDE.md` §5 디자인 시스템 | Lead (`/meta`) 또는 designer 결정 후 Lead | 정책 |
+| `CLAUDE.md` §8 코딩 컨벤션 | Lead (`/meta`) | 정책 |
+| `CLAUDE.md` §9 워크플로우 / §10 브랜치 / §12 결정 로그 운영 | Lead (`/meta`) | 운영 규칙 |
+| `CLAUDE.md` §13 금지 / §14 참고 | Lead (`/meta`) | 운영 규칙 |
+| `AGENTS.md` 전체 | Lead (`/meta`) | 운영 규칙 그 자체 |
+| `.claude/**` (에이전트·스킬·훅·settings) | Lead (`/meta`) | 운영 도구 |
+
+원칙:
+- 코드 변경의 **사실적 결과**(테이블·라우트·환경변수·스택·폴더 구조)는 `/work` 안에서 worker 가 함께 갱신
+- **운영 정책/규칙**(누가·어떻게 일하느냐, 어떤 게 금지냐, 어떤 톤이냐)은 Lead 가 `/meta` 로 별도 PR
+
+판단 한 줄: **"이 문서 갱신이 코드 diff 없이 단독으로 의미가 있는가?"** — 단독 의미 있으면 `/meta`, 코드와 짝이어야 의미 있으면 `/work` 안에서 worker 가.
+
+### 5-6. 팀 spawn 시 worker 프롬프트 필수 포함
 
 ```
 - 워크트리 경로: <절대경로>
@@ -247,7 +271,10 @@ Agent({
   → 이 모든 테스트를 통과시켜라.
   → spec 자체를 약화하지 마라 (필요 시 Lead 에 보고 — Lead 가 자율 판단해 spec 갱신).
 - 테스트 파일(tests/**, e2e/**) 절대 수정 금지. 읽기만 허용.
-- README.md 동기화 의무: 사용자 가시 기능·스택·사이트맵·데이터 모델이 바뀌면 README.md 도 함께 갱신
+- 문서 동기화 의무 (peer 검증 직전 점검):
+  · README.md — 사용자 가시 기능·스택·사이트맵·데이터 모델·디자인 톤 변경 시 갱신
+  · CLAUDE.md "사실 영역" (§3 기술 스택 / §4 디렉토리 구조 / §6 데이터 모델 / §7 라우팅·사이트맵 / §11 환경 변수) — 코드 변경의 직접 결과면 같은 PR 에서 갱신
+  · CLAUDE.md "정책 영역" (§1/§2/§5/§8/§9/§10/§12/§13/§14) 와 AGENTS.md 전체 는 절대 손대지 마라 — Lead 가 `/meta` 흐름으로 별도 처리
 - 구체적 요구사항·설계 결정·제약
 - 작업 완료 시 npm test 통과 확인 → lint·sfx 에 SendMessage 로 peer 검증 요청
 - Server Component → Client Component 로 일반 함수 prop 전달 금지 (matchmaker PR #6 사례)
@@ -347,7 +374,8 @@ Agent({
 
 - 비자명한 결정의 결정 로그 누락
 - 동일 결정을 매번 사용자에게 묻는 행위 (PRD/이전 로그/기본값으로 자율 판단할 것)
-- 사용자 가시 기능·스택·사이트맵·데이터 모델이 바뀌었는데 worker 에게 README 동기화 요청 누락
+- 사용자 가시 기능·스택·사이트맵·데이터 모델이 바뀌었는데 worker 에게 README.md / CLAUDE.md 사실 영역 동기화 요청 누락 (§5-5 매트릭스 참고)
+- CLAUDE.md 정책 영역 / AGENTS.md / `.claude/**` 변경을 `/work` 안에 끼워 넣는 것 — 반드시 `/meta` 로 별도 PR
 
 ### 9-3. worker 한정
 
@@ -356,6 +384,9 @@ Agent({
 - nested `Agent` 호출로 lint/sfx 를 직접 spawn 시도 (팀 모델에선 peer 가 이미 살아있음)
 - PR 생성 직후 자기 종료 (Lead 가 `shutdown_request` 보낼 때까지 idle 유지)
 - 사용자 가시 기능·스택·사이트맵·데이터 모델 변경 시 README.md 동기화 누락
+- **CLAUDE.md 사실 영역(§3 / §4 / §6 / §7 / §11) 동기화 누락** (§5-5 매트릭스 참고)
+- **AGENTS.md 전체 또는 CLAUDE.md 정책 영역(§1/§2/§5/§8/§9/§10/§12/§13/§14) 임의 수정** — Lead 가 `/meta` 로 별도 처리
+- `.claude/**` 임의 수정 — Lead `/meta` 영역
 - Server Component → Client Component 로 일반 함수 prop 전달 (Server Action 외)
 
 ### 9-4. test-writer 한정

@@ -314,6 +314,8 @@ docs/decisions/
 - AWS MCP 호출 시 `--profile read-only` 누락 (훅 차단)
 - **비자명한 결정을 내리고도 `docs/decisions/<NNN>-<slug>.md` 미작성**
 - **사용자 가시 기능·스택·사이트맵·데이터 모델이 바뀌었는데 `README.md` 미동기화**
+- **이 파일의 사실 영역(§3 스택 / §4 디렉토리 구조 / §6 데이터 모델 / §7 사이트맵 / §11 환경 변수)이 코드 변경으로 거짓이 됐는데 같은 PR 에서 미동기화** (책임 매트릭스: [`AGENTS.md`](./AGENTS.md) §5-5)
+- **worker 가 이 파일의 정책 영역(§1/§2/§5/§8/§9/§10/§12/§13/§14) 또는 `AGENTS.md` 를 임의 수정** — 정책 변경은 Lead 가 `/meta` 로 별도 PR
 - Server Component → Client Component 로 일반 함수 prop 전달 (Server Action 외 금지)
 
 ## 15. 참고 문서
