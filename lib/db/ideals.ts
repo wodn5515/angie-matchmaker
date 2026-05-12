@@ -251,15 +251,19 @@ export async function upsertFriendIdealAggregate(
   ).error;
   if (idealsErr) throw idealsErr;
 
-  // 1:N replace 유틸
-  async function replaceMulti<TRow extends Record<string, unknown>>(
+  // 1:N replace 유틸 — supabase 의 insert 제네릭에 통과 가능한 unknown[] cast.
+  async function replaceMulti(
     table: string,
-    rows: TRow[],
+    rows: Array<Record<string, unknown>>,
   ): Promise<void> {
     const del = await sb.from(table).delete().eq("friend_id", friendId);
     if (del.error) throw del.error;
     if (rows.length === 0) return;
-    const ins = await sb.from(table).insert(rows);
+    // supabase 의 from(table).insert 는 string literal table 만 보면 정확한 타입을 잡는데,
+    // dynamic table 이름 + 일반 Record 입력은 자동 추론이 닿지 않는다 — unknown 캐스트로 통과.
+    const ins = await (sb.from(table) as ReturnType<typeof sb.from>).insert(
+      rows as unknown as never,
+    );
     if (ins.error) throw ins.error;
   }
 

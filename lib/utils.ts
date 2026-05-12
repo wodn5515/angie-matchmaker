@@ -1,17 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { customAlphabet } from "nanoid";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-const tokenAlphabet =
-  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-const generateInvitationToken = customAlphabet(tokenAlphabet, 32);
-
-export function newSurveyToken(): string {
-  return generateInvitationToken();
 }
 
 export function formatDate(d: string | Date | null | undefined) {
