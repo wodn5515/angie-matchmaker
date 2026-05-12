@@ -12,10 +12,17 @@ import {
   RELATIONSHIP_STATUS_LABEL,
   MATCH_INTEREST_LABEL,
 } from "@/lib/types/domain";
+import { REGION_OPTIONS, JOB_OPTIONS } from "@/lib/types/v2-options";
 
-type ActionFn = (
-  formData: FormData,
-) => Promise<{ ok: true; friendId: string } | { ok: false; error: string }>;
+/**
+ * V2 운영자 가입자 정보 수정 폼.
+ *
+ * V1 폐기 컬럼 제거 (closeness / how_we_met / kakao_id / phone). V2 신규 컬럼은
+ * 가입자가 본인 입력하는 게 정석이지만, 운영자가 메모 / 태그 / 매칭 관심도 등을
+ * 보강 편집할 수 있게 둔다. status / rejected_reason 은 ReviewActions 가 별도 처리.
+ */
+type ActionResult = { ok: true; friendId: string } | { ok: false; error: string };
+type ActionFn = (formData: FormData) => Promise<ActionResult>;
 
 export function FriendForm({
   initial,
@@ -28,17 +35,6 @@ export function FriendForm({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [showOptional, setShowOptional] = useState<boolean>(
-    !!(
-      initial?.birth_year ||
-      initial?.region ||
-      initial?.occupation ||
-      initial?.tags?.length ||
-      initial?.instagram ||
-      initial?.kakao_id ||
-      initial?.notes
-    ),
-  );
   const router = useRouter();
 
   const tagsCsv = (initial?.tags ?? []).join(", ");
@@ -59,12 +55,12 @@ export function FriendForm({
     <form action={onSubmit} className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>필수 정보</CardTitle>
+          <CardTitle>기본 정보</CardTitle>
         </CardHeader>
         <CardBody className="grid gap-4 md:grid-cols-3">
           <div className="md:col-span-1">
             <Label required htmlFor="name">
-              이름 / 별명
+              이름
             </Label>
             <Input
               id="name"
@@ -78,12 +74,19 @@ export function FriendForm({
             <Label required htmlFor="gender">
               성별
             </Label>
-            <Select id="gender" name="gender" required defaultValue={initial?.gender ?? "female"}>
-              {(Object.keys(GENDER_LABEL) as Array<keyof typeof GENDER_LABEL>).map((k) => (
-                <option key={k} value={k}>
-                  {GENDER_LABEL[k]}
-                </option>
-              ))}
+            <Select
+              id="gender"
+              name="gender"
+              required
+              defaultValue={initial?.gender ?? "female"}
+            >
+              {(Object.keys(GENDER_LABEL) as Array<keyof typeof GENDER_LABEL>).map(
+                (k) => (
+                  <option key={k} value={k}>
+                    {GENDER_LABEL[k]}
+                  </option>
+                ),
+              )}
             </Select>
           </div>
           <div>
@@ -110,178 +113,170 @@ export function FriendForm({
         </CardBody>
       </Card>
 
-      <button
-        type="button"
-        onClick={() => setShowOptional((v) => !v)}
-        className="text-xs text-pink-400 hover:text-pink-300"
-      >
-        {showOptional ? "− 선택 정보 접기" : "＋ 선택 정보 펼치기"}
-      </button>
+      <Card>
+        <CardHeader>
+          <CardTitle>추천인</CardTitle>
+        </CardHeader>
+        <CardBody className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label htmlFor="recommender_name">추천인 이름</Label>
+            <Input
+              id="recommender_name"
+              name="recommender_name"
+              defaultValue={initial?.recommender_name ?? ""}
+              placeholder="김영희"
+            />
+          </div>
+          <div>
+            <Label htmlFor="recommender_relation">관계</Label>
+            <Input
+              id="recommender_relation"
+              name="recommender_relation"
+              defaultValue={initial?.recommender_relation ?? ""}
+              placeholder="대학 동기"
+            />
+          </div>
+        </CardBody>
+      </Card>
 
-      {showOptional ? (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>기본 정보 (Tier 2)</CardTitle>
-            </CardHeader>
-            <CardBody className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="birth_year">출생 연도</Label>
-                <Input
-                  id="birth_year"
-                  name="birth_year"
-                  type="number"
-                  min={1900}
-                  max={new Date().getFullYear()}
-                  defaultValue={initial?.birth_year ?? ""}
-                  placeholder="예: 1995"
-                />
-              </div>
-              <div>
-                <Label htmlFor="region">거주 지역</Label>
-                <Input
-                  id="region"
-                  name="region"
-                  defaultValue={initial?.region ?? ""}
-                  placeholder="서울 강남구"
-                />
-              </div>
-              <div>
-                <Label htmlFor="occupation">직업</Label>
-                <Input
-                  id="occupation"
-                  name="occupation"
-                  defaultValue={initial?.occupation ?? ""}
-                  placeholder="디자이너"
-                />
-              </div>
-              <div>
-                <Label htmlFor="closeness">친밀도 (1~5)</Label>
-                <Select
-                  id="closeness"
-                  name="closeness"
-                  defaultValue={initial?.closeness ?? ""}
+      <Card>
+        <CardHeader>
+          <CardTitle>권장 정보</CardTitle>
+        </CardHeader>
+        <CardBody className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label htmlFor="birth_year">출생 연도</Label>
+            <Input
+              id="birth_year"
+              name="birth_year"
+              type="number"
+              min={1900}
+              max={new Date().getFullYear()}
+              defaultValue={initial?.birth_year ?? ""}
+              placeholder="예: 1995"
+            />
+          </div>
+          <div>
+            <Label htmlFor="region">거주 지역</Label>
+            <Select
+              id="region"
+              name="region"
+              defaultValue={initial?.region ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {REGION_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="hometown">출신 지역</Label>
+            <Select
+              id="hometown"
+              name="hometown"
+              defaultValue={initial?.hometown ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {REGION_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="occupation">직업</Label>
+            <Select
+              id="occupation"
+              name="occupation"
+              defaultValue={initial?.occupation ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {JOB_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="instagram">인스타그램</Label>
+            <Input
+              id="instagram"
+              name="instagram"
+              defaultValue={initial?.instagram ?? ""}
+              placeholder="@username"
+            />
+          </div>
+          <div>
+            <Label htmlFor="relationship_status">연애 상태</Label>
+            <Select
+              id="relationship_status"
+              name="relationship_status"
+              defaultValue={initial?.relationship_status ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {(
+                Object.keys(RELATIONSHIP_STATUS_LABEL) as Array<
+                  keyof typeof RELATIONSHIP_STATUS_LABEL
                 >
-                  <option value="">선택 안 함</option>
-                  <option value="1">1 — 거의 모름</option>
-                  <option value="2">2 — 가끔 봄</option>
-                  <option value="3">3 — 보통</option>
-                  <option value="4">4 — 친함</option>
-                  <option value="5">5 — 매우 친함</option>
-                </Select>
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="how_we_met">어떻게 알게 됐는지</Label>
-                <Input
-                  id="how_we_met"
-                  name="how_we_met"
-                  defaultValue={initial?.how_we_met ?? ""}
-                  placeholder="대학 동아리"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="tags_csv">태그 (쉼표로 구분)</Label>
-                <Input
-                  id="tags_csv"
-                  name="tags_csv"
-                  defaultValue={tagsCsv}
-                  placeholder="대학동기, 디자이너, ENFJ"
-                />
-              </div>
-            </CardBody>
-          </Card>
+              ).map((k) => (
+                <option key={k} value={k}>
+                  {RELATIONSHIP_STATUS_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="match_interest">매칭 관심도</Label>
+            <Select
+              id="match_interest"
+              name="match_interest"
+              defaultValue={initial?.match_interest ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {(
+                Object.keys(MATCH_INTEREST_LABEL) as Array<
+                  keyof typeof MATCH_INTEREST_LABEL
+                >
+              ).map((k) => (
+                <option key={k} value={k}>
+                  {MATCH_INTEREST_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </CardBody>
+      </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>연락처 / 메모 (Tier 3)</CardTitle>
-            </CardHeader>
-            <CardBody className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="instagram">인스타그램</Label>
-                <Input
-                  id="instagram"
-                  name="instagram"
-                  defaultValue={initial?.instagram ?? ""}
-                  placeholder="@username"
-                />
-              </div>
-              <div>
-                <Label htmlFor="kakao_id">카카오톡 ID</Label>
-                <Input
-                  id="kakao_id"
-                  name="kakao_id"
-                  defaultValue={initial?.kakao_id ?? ""}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">전화</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  defaultValue={initial?.phone ?? ""}
-                  placeholder="010-..."
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="notes">자유 메모 (운영자만 봄)</Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  rows={4}
-                  defaultValue={initial?.notes ?? ""}
-                  placeholder="이 친구에 대한 인상, 특이사항 등"
-                />
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>상태</CardTitle>
-            </CardHeader>
-            <CardBody className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="relationship_status">연애 상태</Label>
-                <Select
-                  id="relationship_status"
-                  name="relationship_status"
-                  defaultValue={initial?.relationship_status ?? ""}
-                >
-                  <option value="">선택 안 함</option>
-                  {(
-                    Object.keys(RELATIONSHIP_STATUS_LABEL) as Array<
-                      keyof typeof RELATIONSHIP_STATUS_LABEL
-                    >
-                  ).map((k) => (
-                    <option key={k} value={k}>
-                      {RELATIONSHIP_STATUS_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="match_interest">매칭 관심도</Label>
-                <Select
-                  id="match_interest"
-                  name="match_interest"
-                  defaultValue={initial?.match_interest ?? ""}
-                >
-                  <option value="">선택 안 함</option>
-                  {(
-                    Object.keys(MATCH_INTEREST_LABEL) as Array<
-                      keyof typeof MATCH_INTEREST_LABEL
-                    >
-                  ).map((k) => (
-                    <option key={k} value={k}>
-                      {MATCH_INTEREST_LABEL[k]}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </CardBody>
-          </Card>
-        </>
-      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>운영자 메모</CardTitle>
+        </CardHeader>
+        <CardBody className="grid gap-4">
+          <div>
+            <Label htmlFor="tags_csv">태그 (쉼표로 구분)</Label>
+            <Input
+              id="tags_csv"
+              name="tags_csv"
+              defaultValue={tagsCsv}
+              placeholder="대학동기, 디자이너, ENFJ"
+            />
+          </div>
+          <div>
+            <Label htmlFor="notes">자유 메모 (운영자만 봄)</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              rows={4}
+              defaultValue={initial?.notes ?? ""}
+              placeholder="이 가입자에 대한 인상, 특이사항 등"
+            />
+          </div>
+        </CardBody>
+      </Card>
 
       {error ? (
         <p className="text-xs text-[var(--color-danger)]">{error}</p>

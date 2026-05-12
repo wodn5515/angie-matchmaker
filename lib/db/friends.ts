@@ -1,6 +1,5 @@
-import "server-only";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
-import type { Friend } from "@/lib/types/domain";
+import type { Friend, FriendStatus } from "@/lib/types/domain";
 
 export async function listFriends(ownerId: string): Promise<Friend[]> {
   const sb = createSupabaseServiceClient();
@@ -11,6 +10,53 @@ export async function listFriends(ownerId: string): Promise<Friend[]> {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as Friend[];
+}
+
+export async function listFriendsByStatus(
+  ownerId: string,
+  status: FriendStatus | "all",
+): Promise<Friend[]> {
+  const sb = createSupabaseServiceClient();
+  let q = sb
+    .from("friends")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: false });
+  if (status !== "all") q = q.eq("status", status);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as Friend[];
+}
+
+export type FriendStatusCounts = {
+  all: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+};
+
+export async function getFriendStatusCounts(
+  ownerId: string,
+): Promise<FriendStatusCounts> {
+  const sb = createSupabaseServiceClient();
+  const { data, error } = await sb
+    .from("friends")
+    .select("status")
+    .eq("owner_id", ownerId);
+  if (error) throw error;
+  const rows = (data ?? []) as Array<{ status: FriendStatus }>;
+  const counts: FriendStatusCounts = {
+    all: rows.length,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  };
+  for (const r of rows) {
+    if (r.status === "pending") counts.pending++;
+    else if (r.status === "approved") counts.approved++;
+    else if (r.status === "rejected") counts.rejected++;
+  }
+  return counts;
 }
 
 export async function getFriend(
@@ -45,7 +91,7 @@ export async function getFriendsByIds(
 
 export type FriendInput = Omit<
   Friend,
-  "id" | "owner_id" | "created_at" | "updated_at"
+  "id" | "owner_id" | "created_at" | "updated_at" | "auth_user_id" | "email"
 >;
 
 export async function createFriend(
@@ -65,7 +111,7 @@ export async function createFriend(
 export async function updateFriend(
   ownerId: string,
   friendId: string,
-  input: Partial<FriendInput>,
+  input: Partial<Friend>,
 ): Promise<Friend> {
   const sb = createSupabaseServiceClient();
   const { data, error } = await sb
@@ -92,28 +138,34 @@ export async function deleteFriend(
   if (error) throw error;
 }
 
-/** Returns 0..100 reflecting how filled out the friend profile is. */
+/**
+ * 가입자 프로필 완성도 (0..100).
+ *
+ * V2: 필수(이름·성별·선호 성별·추천인 2) = 항상 6점 기본.
+ *     권장 7 (birth_year/region/hometown/occupation/instagram/relationship_status/match_interest)
+ *     each 채워질 때마다 거의 동일 비중. 운영자 메모(tags/notes) 는 보너스.
+ */
 export function profileCompletion(f: Friend): number {
-  // Tier 1 (fixed weight 30): name + gender + preferred_gender — always set
+  // Required base (모든 V2 가입자는 통과해서 row 가 만들어졌으므로 30점 기본)
   let score = 30;
-  // Tier 2 (40): birth_year, region, occupation, closeness, how_we_met, tags(any)
   const tier2Items = [
     f.birth_year != null,
     !!f.region,
+    !!f.hometown,
     !!f.occupation,
-    f.closeness != null,
-    !!f.how_we_met,
-    Array.isArray(f.tags) && f.tags.length > 0,
-  ];
-  score += Math.round((tier2Items.filter(Boolean).length / tier2Items.length) * 40);
-  // Tier 3 (20): instagram, kakao_id, phone, notes
-  const tier3Items = [!!f.instagram, !!f.kakao_id, !!f.phone, !!f.notes];
-  score += Math.round((tier3Items.filter(Boolean).length / tier3Items.length) * 20);
-  // Status (10): relationship_status, match_interest
-  const statusItems = [
+    !!f.instagram,
     f.relationship_status != null,
     f.match_interest != null,
   ];
-  score += Math.round((statusItems.filter(Boolean).length / statusItems.length) * 10);
+  score += Math.round(
+    (tier2Items.filter(Boolean).length / tier2Items.length) * 50,
+  );
+  const operatorItems = [
+    Array.isArray(f.tags) && f.tags.length > 0,
+    !!f.notes,
+  ];
+  score += Math.round(
+    (operatorItems.filter(Boolean).length / operatorItems.length) * 20,
+  );
   return Math.min(100, score);
 }
