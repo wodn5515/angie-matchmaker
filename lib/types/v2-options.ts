@@ -2,24 +2,26 @@
  * V2 가입자 측 폼 (`/onboarding/*`, `/me/*`) 에서 공통 사용하는 옵션·라벨 사전.
  *
  * PRD §3.3.3 (이런 분이면 좋겠어요 3단 구조) 의 옵션·라벨 원본.
- * worker 는 이 모듈을 import 해서:
- *   - UI 컴포넌트 옵션 props 로 전달
- *   - server action 의 enum validation 에 활용
- *   - DB 마이그레이션의 CHECK enum 값과 1:1 매핑
+ * 이 모듈은:
+ *   - 옵션 배열 (UI 컴포넌트 props 로 전달)
+ *   - 라벨 lookup 객체 (운영자 측 표시·비교 뷰)
+ *   - 옵션 값 → label 헬퍼
+ * 를 제공한다.
  *
- * 도메인 타입 자체(Friend 등)는 task-A 마이그레이션 + lib/types/domain.ts 갱신에서
- * worker 가 추가. 여기는 정적 옵션 사전만 둔다.
+ * 도메인 타입 자체 (Friend / FriendStatus / SmokingPreference 등) 는
+ * `lib/types/domain.ts` 가 single source. 여기서는 재export 하지 않고,
+ * 사용처에서 `domain.ts` 에서 가져온다.
  */
-
 // ─────────────────────────────────────────────────────────────
 // §1 선호 조건 (구조화 8개 항목) — friend_ideals 1:1 + 다중선택 1:N
 // ─────────────────────────────────────────────────────────────
 
+// SmokingPreference / DrinkingPreference / MarriageTiming / TattooPreference 타입은
+// `lib/types/domain.ts` 가 single source.
 export const SMOKING_OPTIONS = [
   { value: "any", label: "상관없음" },
   { value: "non_smoker_only", label: "비흡연자만" },
 ] as const;
-export type SmokingPreference = (typeof SMOKING_OPTIONS)[number]["value"];
 
 export const DRINKING_OPTIONS = [
   { value: "any", label: "상관없음" },
@@ -27,7 +29,6 @@ export const DRINKING_OPTIONS = [
   { value: "sometimes_only", label: "가끔만 OK" },
   { value: "non_drinker_only", label: "안 마시는 사람만" },
 ] as const;
-export type DrinkingPreference = (typeof DRINKING_OPTIONS)[number]["value"];
 
 export const MARRIAGE_TIMING_OPTIONS = [
   { value: "any", label: "상관없음" },
@@ -35,14 +36,12 @@ export const MARRIAGE_TIMING_OPTIONS = [
   { value: "over_3y", label: "3년 이상 천천히" },
   { value: "dating_focus", label: "지금은 연애 위주" },
 ] as const;
-export type MarriageTiming = (typeof MARRIAGE_TIMING_OPTIONS)[number]["value"];
 
 export const TATTOO_OPTIONS = [
   { value: "any", label: "상관없음" },
   { value: "none_only", label: "없는 사람만" },
   { value: "small_ok", label: "작은 것 OK" },
 ] as const;
-export type TattooPreference = (typeof TATTOO_OPTIONS)[number]["value"];
 
 /** 광역시도 17개 — 거주지역·출신지역 다중 선택 */
 export const REGION_OPTIONS = [
@@ -107,6 +106,7 @@ export type PersonalityKeyword = (typeof PERSONALITY_KEYWORDS)[number]["value"];
 // §3 매칭 우선순위 — 6개 카테고리, top 3 선택 (RankingPicker)
 // ─────────────────────────────────────────────────────────────
 
+// PriorityCategory 타입은 `lib/types/domain.ts` 가 single source.
 export const PRIORITY_CATEGORIES = [
   {
     value: "appearance",
@@ -145,7 +145,6 @@ export const PRIORITY_CATEGORIES = [
     description: "취미·여가·일상 흐름",
   },
 ] as const;
-export type PriorityCategory = (typeof PRIORITY_CATEGORIES)[number]["value"];
 
 // ─────────────────────────────────────────────────────────────
 // 라벨 lookup helper — 단발 사용 (운영자 측 표시·비교 뷰)
@@ -175,17 +174,4 @@ const CURRENT_YEAR = new Date().getFullYear();
 export const BIRTH_YEAR_MIN = CURRENT_YEAR - 70; // ~70대 후반까지
 export const BIRTH_YEAR_MAX = CURRENT_YEAR - 18; // 만 18+
 
-// ─────────────────────────────────────────────────────────────
-// 가입자 심사 status
-// ─────────────────────────────────────────────────────────────
-
-export const FRIEND_STATUS_LABEL: Record<
-  "pending" | "approved" | "rejected",
-  string
-> = {
-  pending: "심사 대기",
-  approved: "승인됨",
-  rejected: "거절됨",
-};
-
-export type FriendStatus = keyof typeof FRIEND_STATUS_LABEL;
+// FRIEND_STATUS_LABEL 은 `lib/types/domain.ts` 에 있음 (재정의 제거).

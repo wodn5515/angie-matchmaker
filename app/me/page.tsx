@@ -2,9 +2,7 @@ import { UserShell } from "@/components/user/user-shell";
 import { StatusBanner } from "@/components/user/status-banner";
 import { MeSectionCard } from "@/components/user/me-section-card";
 import { requireApprovedUser } from "@/lib/auth/user";
-import {
-  createSupabaseServiceClient,
-} from "@/lib/supabase/server";
+import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getFriendIdealAggregate } from "@/lib/db/ideals";
 import { ensureStandardSurvey, listQuestionsBySurvey } from "@/lib/db/surveys";
 import { listAnswersForFriend } from "@/lib/db/answers";

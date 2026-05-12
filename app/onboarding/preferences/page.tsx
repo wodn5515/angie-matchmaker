@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import { UserShell } from "@/components/user/user-shell";
 import { OnboardingStepHeader } from "@/components/user/onboarding-step-header";
 import { Button } from "@/components/ui/button";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceClient,
+} from "@/lib/supabase/server";
 import { getFriendIdealAggregate } from "@/lib/db/ideals";
-import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { PreferencesForm } from "./preferences-form";
 import {
   submitOnboardingPreferencesAction,

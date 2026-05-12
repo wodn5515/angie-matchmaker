@@ -19,9 +19,9 @@ export function StatusBanner({
   className?: string;
 }) {
   const toneClass = {
-    pending: "border-[var(--color-warn)]/30 bg-[var(--color-warn)]/8 text-[var(--color-warn)]",
-    approved: "border-[var(--color-success)]/30 bg-[var(--color-success)]/8 text-[var(--color-success)]",
-    rejected: "border-[var(--color-danger)]/30 bg-[var(--color-danger)]/8 text-[var(--color-danger)]",
+    pending: "border-[var(--color-warn)]/30 bg-[var(--color-warn)]/10 text-[var(--color-warn)]",
+    approved: "border-[var(--color-success)]/30 bg-[var(--color-success)]/10 text-[var(--color-success)]",
+    rejected: "border-[var(--color-danger)]/30 bg-[var(--color-danger)]/10 text-[var(--color-danger)]",
   }[tone];
 
   return (

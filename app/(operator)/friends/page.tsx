@@ -108,7 +108,7 @@ export default async function FriendsPage({
                           <p className="truncate text-base font-semibold text-fg">
                             {f.name}
                           </p>
-                          <p className="text-[11px] text-[var(--color-fg-muted)] mt-0.5">
+                          <p className="mt-0.5 text-[11px] text-[var(--color-fg-muted)]">
                             {GENDER_LABEL[f.gender]}
                             {f.birth_year ? ` · ${f.birth_year}년생` : ""}
                             {f.region ? ` · ${f.region}` : ""}
