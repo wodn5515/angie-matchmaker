@@ -18,18 +18,19 @@ const FriendUpdateSchema = z.object({
   name: z.string().trim().min(1, "이름은 필수입니다").max(60),
   gender: z.enum(["male", "female", "other"]),
   preferred_gender: z.enum(["male", "female", "any"]),
+  // 가입 시 입력된 추천인 정보의 의도를 보존 — 운영자도 임의로 비우지 못하게 min(1).
+  // 운영자가 다른 필드만 수정할 경우 폼이 defaultValue 로 기존 값을 그대로 제출하므로
+  // 자연 통과한다.
   recommender_name: z
     .string()
     .trim()
-    .max(80)
-    .optional()
-    .transform((v) => v ?? ""),
+    .min(1, "추천인 이름은 비울 수 없습니다")
+    .max(80),
   recommender_relation: z
     .string()
     .trim()
-    .max(120)
-    .optional()
-    .transform((v) => v ?? ""),
+    .min(1, "추천인 관계는 비울 수 없습니다")
+    .max(120),
   birth_year: z
     .union([
       z.coerce.number().int().min(1900).max(new Date().getFullYear()),

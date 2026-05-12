@@ -208,7 +208,13 @@ export type FriendIdealsUpsertInput = {
 
 /**
  * friend_ideals + 1:N 5개 테이블을 한 번에 갱신.
- * 1:N 은 단순 replace (DELETE + INSERT). 가입자 측 폼 제출이 트랜잭션 단위로 일관되게.
+ *
+ * Supabase JS 가 client 측 트랜잭션을 지원하지 않으므로 진짜 ACID 는 어렵다.
+ * 차선: 1:N replace 5개를 먼저 수행하고 1:1 upsert 를 마지막에 둔다 —
+ *   - 1:N 중간에 실패하면 1:1 (updated_at) 은 갱신되지 않아 재시도가 idempotent
+ *   - 1:1 upsert 가 마지막에 성공하면 모든 row 가 정합 상태
+ *
+ * 진짜 트랜잭션이 필요하면 향후 plpgsql RPC 로 전환.
  */
 export async function upsertFriendIdealAggregate(
   input: FriendIdealsUpsertInput,
@@ -231,26 +237,6 @@ export async function upsertFriendIdealAggregate(
     priorities,
   } = input;
 
-  // 1:1
-  const idealsErr = (
-    await sb.from("friend_ideals").upsert(
-      {
-        friend_id: friendId,
-        age_from,
-        age_to,
-        hometown_same_bonus,
-        smoking,
-        drinking,
-        marriage_timing,
-        tattoo,
-        free_text,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "friend_id" },
-    )
-  ).error;
-  if (idealsErr) throw idealsErr;
-
   // 1:N replace 유틸 — supabase 의 insert 제네릭에 통과 가능한 unknown[] cast.
   async function replaceMulti(
     table: string,
@@ -267,6 +253,7 @@ export async function upsertFriendIdealAggregate(
     if (ins.error) throw ins.error;
   }
 
+  // 1:N 다섯 테이블 replace 먼저 — 실패 시 throw 되며 1:1 까지 가지 않아 재시도 가능.
   await replaceMulti(
     "friend_ideal_regions",
     regions.map((region) => ({ friend_id: friendId, region })),
@@ -291,4 +278,24 @@ export async function upsertFriendIdealAggregate(
       category,
     })),
   );
+
+  // 1:1 마지막. updated_at 이 변하는 시점이 곧 정합 상태 진입 시점.
+  const idealsErr = (
+    await sb.from("friend_ideals").upsert(
+      {
+        friend_id: friendId,
+        age_from,
+        age_to,
+        hometown_same_bonus,
+        smoking,
+        drinking,
+        marriage_timing,
+        tattoo,
+        free_text,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "friend_id" },
+    )
+  ).error;
+  if (idealsErr) throw idealsErr;
 }

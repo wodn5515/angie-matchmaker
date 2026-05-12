@@ -13,10 +13,22 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  *   - 가입자 (status=approved) → /me
  *   - 가입자 (status=rejected) → /rejected
  */
+/**
+ * `next` 파라미터 검증 — open redirect 차단.
+ * 같은 origin 의 path-only redirect 만 허용. `//evil.com`, `/\evil.com`,
+ * `https://evil.com` 같은 외부/protocol-relative 경로는 `/` 로 fallback.
+ */
+function safeNext(raw: string | null): string {
+  if (!raw || !raw.startsWith("/")) return "/";
+  if (raw.startsWith("//")) return "/";
+  if (raw.startsWith("/\\")) return "/";
+  return raw;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/";
+  const next = safeNext(url.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(

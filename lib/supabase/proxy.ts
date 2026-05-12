@@ -66,6 +66,13 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
+  // /auth/* (OAuth callback / signout) 은 가드 자체가 always pass 분기 — 추가 조회 X.
+  // 세션 refresh 도 callback 라우트가 exchangeCodeForSession 안에서 자체 처리.
+  const pathname = request.nextUrl.pathname;
+  if (pathname.startsWith("/auth/")) {
+    return response;
+  }
+
   // 세션 refresh
   const {
     data: { user },
@@ -74,6 +81,7 @@ export async function updateSession(request: NextRequest) {
   const isOp = isOperator(user?.email);
 
   // 가입자라면 friends row 조회 (service-role — RLS 우회).
+  // 비로그인 / 운영자 / 비-가드 라우트는 friend fetch 생략 — 불필요한 DB RTT 회피.
   let friendRow: {
     status: "pending" | "approved" | "rejected";
     onboarding_step: 1 | 2 | 3 | null;
@@ -103,7 +111,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   const target = resolveGuardTarget({
-    pathname: request.nextUrl.pathname,
+    pathname,
     user: user?.email ? { email: user.email } : null,
     isOperator: isOp,
     friend: friendRow,

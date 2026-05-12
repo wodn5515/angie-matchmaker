@@ -97,29 +97,41 @@ export function OnboardingProfileForm({
         <Field
           label="추천인 이름"
           htmlFor="recommender_name"
-          required
-          hint="운영자가 아는 분의 이름을 적어주세요"
+          required={variant === "onboarding"}
+          hint={
+            variant === "edit"
+              ? "변경하려면 운영자에게 문의해주세요"
+              : "운영자가 아는 분의 이름을 적어주세요"
+          }
         >
           <Input
             id="recommender_name"
             name="recommender_name"
             defaultValue={dv.recommender_name ?? ""}
             placeholder="김영희"
-            required
+            required={variant === "onboarding"}
+            readOnly={variant === "edit"}
+            disabled={variant === "edit"}
           />
         </Field>
         <Field
           label="추천인 관계"
           htmlFor="recommender_relation"
-          required
-          hint="예: 대학 동기, 회사 선배, 동아리 친구"
+          required={variant === "onboarding"}
+          hint={
+            variant === "edit"
+              ? "변경하려면 운영자에게 문의해주세요"
+              : "예: 대학 동기, 회사 선배, 동아리 친구"
+          }
         >
           <Input
             id="recommender_relation"
             name="recommender_relation"
             defaultValue={dv.recommender_relation ?? ""}
             placeholder="대학 동기"
-            required
+            required={variant === "onboarding"}
+            readOnly={variant === "edit"}
+            disabled={variant === "edit"}
           />
         </Field>
       </FormSection>
