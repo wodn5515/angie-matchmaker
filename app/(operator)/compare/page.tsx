@@ -7,11 +7,13 @@ import {
   listChapters,
   listQuestionsBySurvey,
 } from "@/lib/db/surveys";
-import { listAnswersForFriendOnSurvey } from "@/lib/db/invitations";
+import { listAnswersForFriend } from "@/lib/db/answers";
 import { getOrCreatePair } from "@/lib/db/pairs";
+import { getFriendIdealAggregate } from "@/lib/db/ideals";
 import { CompareSelector } from "./selector";
 import { CompareView } from "./compare-view";
 import { MetadataComparison } from "./metadata-comparison";
+import { IdealMatchSection } from "./ideal-match-section";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +46,22 @@ export default async function ComparePage({
   if (!friendA || !friendB) redirect("/compare");
 
   const standard = await ensureStandardSurvey(session.userId);
-  const [chapters, questions, answersA, answersB, pair] = await Promise.all([
+  const [
+    chapters,
+    questions,
+    answersA,
+    answersB,
+    pair,
+    idealsA,
+    idealsB,
+  ] = await Promise.all([
     listChapters(standard.id),
     listQuestionsBySurvey(standard.id),
-    listAnswersForFriendOnSurvey(friendA.id, standard.id),
-    listAnswersForFriendOnSurvey(friendB.id, standard.id),
+    listAnswersForFriend(friendA.id),
+    listAnswersForFriend(friendB.id),
     getOrCreatePair(session.userId, friendA.id, friendB.id),
+    getFriendIdealAggregate(friendA.id),
+    getFriendIdealAggregate(friendB.id),
   ]);
 
   return (
@@ -68,13 +80,32 @@ export default async function ComparePage({
 
       <MetadataComparison friendA={friendA} friendB={friendB} />
 
+      <IdealMatchSection
+        friendA={friendA}
+        friendB={friendB}
+        idealsA={idealsA}
+        idealsB={idealsB}
+      />
+
       <CompareView
         friendA={friendA}
         friendB={friendB}
         chapters={chapters}
         questions={questions}
-        answersA={answersA}
-        answersB={answersB}
+        answersA={answersA.map((a) => ({
+          id: a.id,
+          friend_id: friendA.id,
+          question_id: a.question_id,
+          value: a.value as string | string[] | number | null,
+          updated_at: a.updated_at,
+        }))}
+        answersB={answersB.map((a) => ({
+          id: a.id,
+          friend_id: friendB.id,
+          question_id: a.question_id,
+          value: a.value as string | string[] | number | null,
+          updated_at: a.updated_at,
+        }))}
         pair={pair}
       />
     </div>
