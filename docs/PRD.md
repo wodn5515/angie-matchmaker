@@ -619,14 +619,25 @@ V2 추가 non-goal (V2.x / V3 검토):
 - `components/user/**` (가입자 측 도메인 컴포넌트)
 - `supabase/migrations/0003_v2_self_signup.sql`
 
-### 코드 작업 분할 권장 (별도 `/work` PR 시리즈)
-1. **PR-A**: 마이그레이션 + `lib/auth/user.ts` + `proxy.ts` 가드 (백엔드 기반)
-2. **PR-B**: `/signup` + `/onboarding/*` (가입 흐름)
-3. **PR-C**: `/me/*` (자기 페이지)
-4. **PR-D**: 운영자 대시보드 위젯 + `/friends` sub-tab + `/friends/[id]` 확장
-5. **PR-E**: 비교 뷰 (`/compare`) 이상형 양방향 확장
-6. **PR-F**: V1 라우트·코드 폐기 (cleanup)
-7. **PR-G**: README 갱신 + 자체 검수 보고
+### 코드 작업 단위: 단일 PR + 내부 task 시퀀스
+
+V1 → V2 는 단절적 전환이므로 분할 머지 시 중간 상태가 일관되지 않아 (스키마 V2 + 코드 V1 → 빌드 깨짐 등) 점진 배포 가치가 없다. 토이 단계 + 운영자 1명 컨텍스트도 분할 리뷰 부담 분산의 의미를 약화시킨다. 결정 근거 상세는 [`docs/decisions/005-v2-single-pr-rollout.md`](./decisions/005-v2-single-pr-rollout.md).
+
+- **PR 단위**: 단일 PR `feature/v2-self-signup-full` → `stage`
+- **머지 시점 정합**: 코드 / PRD / CLAUDE.md 사실 영역 / README 가 한 번에 V2 로 떨어짐
+- **리뷰 단위**: PR 통째가 아니라 commit-by-commit (각 task = 1 commit)
+
+#### 내부 task 시퀀스 (각 task = 1 commit, Lead → worker 위임 순서)
+
+1. **Task-A**: 마이그레이션 + `lib/auth/user.ts` + `proxy.ts` 가드 (백엔드 기반)
+2. **Task-B**: `/signup` + `/onboarding/*` (가입 흐름)
+3. **Task-C**: `/me/*` (자기 페이지)
+4. **Task-D**: 운영자 대시보드 위젯 + `/friends` sub-tab + `/friends/[id]` 확장
+5. **Task-E**: 비교 뷰 (`/compare`) 이상형 양방향 확장
+6. **Task-F**: V1 라우트·코드 폐기 (cleanup)
+7. **Task-G**: README + CLAUDE.md 사실 영역 갱신 + 자체 검수
+
+TDD 게이트는 task 단위로 진행 (test-writer 가 task 별 spec → worker 가 통과). peer 검증 (lint·sfx) 은 PR 통째 단위로 마지막에 한 번.
 
 ---
 
@@ -640,6 +651,7 @@ V2 추가 non-goal (V2.x / V3 검토):
 - [`docs/decisions/001-runtime-architecture.md`](./decisions/001-runtime-architecture.md) — V1 런타임 결정 (보존)
 - [`docs/decisions/002-supabase-publishable-secret-keys.md`](./decisions/002-supabase-publishable-secret-keys.md) — Supabase 키 이전 (보존)
 - [`docs/decisions/003-multi-operator-shared-data.md`](./decisions/003-multi-operator-shared-data.md) — 다중 이메일 + SITE_OWNER_ID (보존)
-- [`docs/decisions/004-v2-self-signup-direction.md`](./decisions/004-v2-self-signup-direction.md) — V2 방향 전환 결정 (이 PR 에서 같이)
+- [`docs/decisions/004-v2-self-signup-direction.md`](./decisions/004-v2-self-signup-direction.md) — V2 방향 전환 결정
+- [`docs/decisions/005-v2-single-pr-rollout.md`](./decisions/005-v2-single-pr-rollout.md) — V2 전환을 단일 PR 로 진행 (이 PR 에서 같이)
 - [`CLAUDE.md`](../CLAUDE.md) — 프로젝트 컨텍스트
 - [`AGENTS.md`](../AGENTS.md) — 에이전트 운영 규칙
