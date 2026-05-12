@@ -105,3 +105,90 @@ P1 spec 도 가능하면 한 번에 포함. test-writer 가 무리라 판단하�
 - 그 다음: 팀 spawn (worker / lint / sfx) → worker 가 PRD §12 의 Task-A~G 시퀀스대로 commit 누적
 - Task-F 단계에서 `.friend-shell` 클래스 제거 명시 (worker 프롬프트에 포함)
 - 운영자 측 page 본체 교체는 Task-A (타입·헬퍼) → Task-D (page 본체) 순서로 의존성 유지
+
+## TDD 게이트 spec 채택 (test-writer 라운드 1 결과)
+
+test-writer 단발 호출(커밋 `3695714`) 결과 전량 채택. P0/P1 모두 같이 잡혔고 모든 모듈 부재로 import 단계에서 빨갛게 실패 확인됨.
+
+### S1. TDD 인프라 채택
+
+- 의존성: `vitest`, `@vitest/ui`, `@testing-library/{react,jest-dom,user-event}`, `jsdom`, `@playwright/test`
+- 설정: `vitest.config.ts` (jsdom + `@` alias + `tests/**`), `tests/setup.ts`, `playwright.config.ts` (chromium 단일, `webServer` 는 worker 가 통과 단계에서 채움), `.gitignore` 갱신
+- npm scripts: `test` / `test:watch` / `test:e2e`
+- 디렉토리: `tests/{unit,integration}/`, `e2e/tests/`
+
+### S2. spec 파일 채택 (P0 5 + P1 3)
+
+| 분류 | 파일 | 케이스 |
+|---|---|---|
+| P0 | `tests/unit/proxy.test.ts` | 22 (매트릭스 6 + 이어풀기 + /auth/callback + 우회 차단) |
+| P0 | `tests/integration/migration-0003.test.ts` | 20 (SQL 텍스트 파싱) |
+| P0 | `tests/unit/auth-user.test.ts` | 14 (getCurrentUser/requireApprovedUser/assertOwnFriendRow/ensureNotOperator) |
+| P0 | `tests/integration/onboarding-resume.test.ts` | 6 (resolveOnboardingResumeTarget 분기) |
+| P0 | `tests/unit/compare-ideal.test.ts` | 17 (single/multi/year_range × neutral/same/partial/different) |
+| P1 | `tests/integration/survey-answers-upsert.test.ts` | 4 (`(friend_id, question_id)` onConflict) |
+| P1 | `e2e/tests/signup-onboarding.spec.ts` | 6 (Step 1~3 + 이어풀기) |
+| P1 | `e2e/tests/operator-review.spec.ts` | 4 (승인/거절/비교 뷰 색상) |
+
+### S3. worker 가 채울 인터페이스 (테스트가 가정한 시그니처) — 그대로 채택
+
+1. **`lib/auth/guard.ts`** — `proxy.ts` 안에서 호출할 순수 함수로 분리
+   ```ts
+   type GuardInput = {
+     pathname: string;
+     user: { email: string } | null;
+     isOperator: boolean;
+     friend: null | { status: "pending"|"approved"|"rejected"; onboarding_step: 1|2|3|null };
+   };
+   type GuardTarget = { type: "pass" } | { type: "redirect"; to: string };
+   export function resolveGuardTarget(input: GuardInput): GuardTarget;
+   ```
+
+2. **`lib/auth/user.ts`** — server component / server action 진입 헬퍼
+   ```ts
+   export type UserSession = {
+     authUserId: string; email: string; friendId: string;
+     status: "pending"|"approved"|"rejected"; onboardingStep: 1|2|3|null;
+   };
+   export async function getCurrentUser(): Promise<UserSession | null>;
+   export async function requireApprovedUser(): Promise<UserSession>;
+   export async function assertOwnFriendRow(friendId: string): Promise<void>;
+   export async function ensureNotOperator(): Promise<void>;
+   ```
+
+3. **`lib/auth/onboarding.ts`**
+   ```ts
+   export function resolveOnboardingResumeTarget(input: {
+     friend: { status: "pending"|"approved"|"rejected"; onboarding_step: 1|2|3|null } | null;
+   }): string | null;
+   ```
+
+4. **`lib/db/ideals.ts`** — PRD §3.4.2 8 항목을 3 kind 로 추상화
+   ```ts
+   export type IdealMatchKind = "same" | "partial" | "different" | "neutral";
+   export function compareIdealValues(args: {
+     ideal: unknown; profile: unknown;
+     kind: "single" | "multi" | "year_range";
+   }): IdealMatchKind;
+   ```
+
+5. **`lib/db/answers.ts`**
+   ```ts
+   export async function upsertSurveyAnswer(args: {
+     friendId: string; questionId: string; value: unknown;
+   }): Promise<{ id: string; updated_at: string }>;
+   ```
+
+### S4. 약화·범위 메모
+
+- **마이그레이션 통합 spec = SQL 텍스트 파싱**: 도커 postgres 의존 강제하면 worker / 사용자 셋업 부담 ↑, 토이 가치 ↓. 정적 단언만으로 PRD §4 의 키 제약 회귀 방지 가능. 실제 Supabase 적용 검수는 사용자 수동 단계로 명시.
+- **E2E storageState 픽스처 / 시드 데이터**: spec 에서 경로만 잡고 worker 가 채움 (P1 영역).
+- **Google OAuth 자체 모킹은 spec 범위 밖**: worker 가 E2E 통과 단계에서 storageState 주입 방식으로 처리.
+
+### S5. worker 프롬프트에 포함할 사항
+
+- 위 5개 인터페이스 (`lib/auth/guard.ts`, `lib/auth/user.ts`, `lib/auth/onboarding.ts`, `lib/db/ideals.ts`, `lib/db/answers.ts`) 를 spec 이 가정한 시그니처 그대로 채우라
+- 통과를 위해 spec 자체를 약화시키지 마라. 약화 필요 시 Lead 에 보고 — Lead 가 자율 판단해 spec 갱신
+- 마이그레이션은 실제 Supabase 콘솔 적용 검수가 사용자 수동 단계 — worker 는 SQL 파일만 정확히 작성
+- E2E 통과를 위해 storageState fixture / 시드 데이터 / `webServer` 설정 채우는 게 P1 통과의 worker 몫
+- `README.md` + `CLAUDE.md` 사실 영역 (§3 스택 / §4 디렉토리 / §6 데이터 모델 / §7 사이트맵 / §11 환경 변수) 동기화 의무
