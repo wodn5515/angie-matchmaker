@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { isOperatorEmail } from "@/lib/auth/operator";
 
+/**
+ * V2 OAuth 콜백.
+ *
+ * V1 처럼 화이트리스트 미통과 사용자를 signOut + /login 으로 튕기지 않는다.
+ * 운영자도 가입자도 모두 OAuth 인증을 거쳐 `/` 로 보내고, proxy 가드가
+ * 실제 라우팅을 결정한다 (PRD §5.5):
+ *   - 운영자 → /
+ *   - 가입자 (friends row 없음) → /onboarding/profile
+ *   - 가입자 (status=pending) → /onboarding/* 또는 /pending
+ *   - 가입자 (status=approved) → /me
+ *   - 가입자 (status=rejected) → /rejected
+ */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -21,17 +32,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Whitelist gate: anyone else is signed out and bounced to login.
-  if (!isOperatorEmail(user?.email)) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(
-      new URL("/login?error=not_operator", request.url),
-    );
-  }
-
+  // 운영자 / 가입자 분기는 proxy 가드에 위임.
   return NextResponse.redirect(new URL(next, request.url));
 }

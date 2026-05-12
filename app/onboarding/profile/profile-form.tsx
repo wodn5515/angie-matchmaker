@@ -7,46 +7,61 @@ import { Field, FormSection } from "@/components/ui/field";
 import { REGION_OPTIONS, JOB_OPTIONS } from "@/lib/types/v2-options";
 
 /**
- * V2 온보딩 Step 1 폼 (가입자 기본 정보).
+ * V2 온보딩 Step 1 + `/me/profile` 공용 폼 (가입자 기본 정보).
  *
- * 디자이너 골격: 필수 4 + 권장 9 필드. 권장 묶음은 접기/펼치기로 가벼움 유지.
+ * PRD §3.1.2 / §3.3.2 — 필수 5 (이름·성별·선호 성별·추천인 이름·추천인 관계) +
+ * 권장 7 (출생연도·거주지역·출신지역·직업·인스타·연애상태·매칭관심도).
  *
- * TODO(worker, task-B):
- *  - `"use server"` action 으로 submit 처리 (예: `submitOnboardingProfileAction`)
- *  - 폼 검증 (이름·성별·선호 성별·추천인 4개 필수), 실패 시 에러 표시
- *  - 제출 성공 시 server-side redirect 로 `/onboarding/preferences`
- *  - 디자이너는 폼 자체 동작 (controlled state) 만 잡고, 서버 통신은 비워둠
+ * - `variant="onboarding"` → 제출 라벨 "다음 단계로 →"
+ * - `variant="edit"` → 제출 라벨 "저장"
+ * - `action` 은 Server Action (FormData → Promise<void>) 만 받는다.
+ *   (CLAUDE.md §8 — Server → Client function prop 은 Server Action 만 허용)
  */
-export function OnboardingProfileForm() {
-  const [showOptional, setShowOptional] = React.useState(true);
-  // controlled state — server action 도입 시 그대로 FormData 로 전달 가능
-  const [name, setName] = React.useState("");
-  const [gender, setGender] = React.useState("female");
-  const [preferredGender, setPreferredGender] = React.useState("any");
-  const [recommenderName, setRecommenderName] = React.useState("");
-  const [recommenderRelation, setRecommenderRelation] = React.useState("");
+export type OnboardingProfileFormDefaults = Partial<{
+  name: string;
+  gender: string;
+  preferred_gender: string;
+  recommender_name: string;
+  recommender_relation: string;
+  birth_year: number | null;
+  region: string | null;
+  hometown: string | null;
+  occupation: string | null;
+  instagram: string | null;
+  relationship_status: string | null;
+  match_interest: string | null;
+}>;
 
-  const [birthYear, setBirthYear] = React.useState("");
-  const [region, setRegion] = React.useState("");
-  const [hometown, setHometown] = React.useState("");
-  const [occupation, setOccupation] = React.useState("");
-  const [instagram, setInstagram] = React.useState("");
-  const [relationshipStatus, setRelationshipStatus] = React.useState("");
-  const [matchInterest, setMatchInterest] = React.useState("");
+export function OnboardingProfileForm({
+  action,
+  defaultValues,
+  variant = "onboarding",
+}: {
+  action: (formData: FormData) => Promise<void>;
+  defaultValues?: OnboardingProfileFormDefaults;
+  variant?: "onboarding" | "edit";
+}) {
+  const dv = defaultValues ?? {};
+  const [showOptional, setShowOptional] = React.useState(
+    !!(
+      dv.birth_year ||
+      dv.region ||
+      dv.hometown ||
+      dv.occupation ||
+      dv.instagram ||
+      dv.relationship_status ||
+      dv.match_interest
+    ),
+  );
 
   return (
-    <form
-      // TODO(worker): action={submitOnboardingProfileAction}
-      action="#todo-server-action"
-      className="space-y-4"
-    >
-      <FormSection title="필수 정보" subtitle="이거 4개만 있어도 다음 단계로!">
+    <form action={action} className="space-y-4">
+      <FormSection title="필수 정보" subtitle="이거 5개만 있어도 다음 단계로!">
         <Field label="이름" htmlFor="name" required hint="실명 또는 자주 쓰는 별명">
           <Input
             id="name"
             name="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            defaultValue={dv.name ?? ""}
             placeholder="김민수"
             required
           />
@@ -57,8 +72,7 @@ export function OnboardingProfileForm() {
             <Select
               id="gender"
               name="gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
+              defaultValue={dv.gender ?? "female"}
               required
             >
               <option value="female">여</option>
@@ -70,8 +84,7 @@ export function OnboardingProfileForm() {
             <Select
               id="preferred_gender"
               name="preferred_gender"
-              value={preferredGender}
-              onChange={(e) => setPreferredGender(e.target.value)}
+              defaultValue={dv.preferred_gender ?? "any"}
               required
             >
               <option value="any">상관없음</option>
@@ -90,14 +103,13 @@ export function OnboardingProfileForm() {
           <Input
             id="recommender_name"
             name="recommender_name"
-            value={recommenderName}
-            onChange={(e) => setRecommenderName(e.target.value)}
+            defaultValue={dv.recommender_name ?? ""}
             placeholder="김영희"
             required
           />
         </Field>
         <Field
-          label="어떻게 아는 분이세요?"
+          label="추천인 관계"
           htmlFor="recommender_relation"
           required
           hint="예: 대학 동기, 회사 선배, 동아리 친구"
@@ -105,8 +117,7 @@ export function OnboardingProfileForm() {
           <Input
             id="recommender_relation"
             name="recommender_relation"
-            value={recommenderRelation}
-            onChange={(e) => setRecommenderRelation(e.target.value)}
+            defaultValue={dv.recommender_relation ?? ""}
             placeholder="대학 동기"
             required
           />
@@ -134,8 +145,7 @@ export function OnboardingProfileForm() {
                 type="number"
                 min={1900}
                 max={new Date().getFullYear()}
-                value={birthYear}
-                onChange={(e) => setBirthYear(e.target.value)}
+                defaultValue={dv.birth_year ?? ""}
                 placeholder="예: 1995"
               />
             </Field>
@@ -144,8 +154,7 @@ export function OnboardingProfileForm() {
                 <Select
                   id="region"
                   name="region"
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
+                  defaultValue={dv.region ?? ""}
                 >
                   <option value="">선택 안 함</option>
                   {REGION_OPTIONS.map((o) => (
@@ -159,8 +168,7 @@ export function OnboardingProfileForm() {
                 <Select
                   id="hometown"
                   name="hometown"
-                  value={hometown}
-                  onChange={(e) => setHometown(e.target.value)}
+                  defaultValue={dv.hometown ?? ""}
                 >
                   <option value="">선택 안 함</option>
                   {REGION_OPTIONS.map((o) => (
@@ -175,8 +183,7 @@ export function OnboardingProfileForm() {
               <Select
                 id="occupation"
                 name="occupation"
-                value={occupation}
-                onChange={(e) => setOccupation(e.target.value)}
+                defaultValue={dv.occupation ?? ""}
               >
                 <option value="">선택 안 함</option>
                 {JOB_OPTIONS.map((o) => (
@@ -194,8 +201,7 @@ export function OnboardingProfileForm() {
                 <Select
                   id="relationship_status"
                   name="relationship_status"
-                  value={relationshipStatus}
-                  onChange={(e) => setRelationshipStatus(e.target.value)}
+                  defaultValue={dv.relationship_status ?? ""}
                 >
                   <option value="">선택 안 함</option>
                   <option value="single">싱글</option>
@@ -206,8 +212,7 @@ export function OnboardingProfileForm() {
                 <Select
                   id="match_interest"
                   name="match_interest"
-                  value={matchInterest}
-                  onChange={(e) => setMatchInterest(e.target.value)}
+                  defaultValue={dv.match_interest ?? ""}
                 >
                   <option value="">선택 안 함</option>
                   <option value="high">적극</option>
@@ -226,8 +231,7 @@ export function OnboardingProfileForm() {
               <Input
                 id="instagram"
                 name="instagram"
-                value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
+                defaultValue={dv.instagram ?? ""}
                 placeholder="@username"
               />
             </Field>
@@ -236,11 +240,13 @@ export function OnboardingProfileForm() {
       ) : null}
 
       <Button size="lg" type="submit" className="w-full">
-        다음 단계로 →
+        {variant === "edit" ? "저장" : "다음 단계로 →"}
       </Button>
-      <p className="text-center text-[11px] text-[var(--color-fg-subtle)]">
-        가입 직후 심사 대기 상태가 돼요. 운영자가 검토하면 알려드릴게요.
-      </p>
+      {variant === "onboarding" ? (
+        <p className="text-center text-[11px] text-[var(--color-fg-subtle)]">
+          가입 직후 심사 대기 상태가 돼요. 운영자가 검토하면 알려드릴게요.
+        </p>
+      ) : null}
     </form>
   );
 }

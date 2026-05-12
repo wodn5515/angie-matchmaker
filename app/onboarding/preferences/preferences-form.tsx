@@ -35,25 +35,31 @@ import {
  *  - DB 저장은 friend_ideals 1:1 + 1:N 테이블 4개 + ranked priorities 테이블
  *  - 컨트롤러는 useState 그대로 유지 — submit 시 FormData 직렬화는 hidden input 으로 자동 처리됨 (MultiSelectChip/RankingPicker/RangeSlider 가 name prop 받음)
  */
+export type PreferencesFormDefaults = Partial<{
+  age_from: number;
+  age_to: number;
+  regions: string[];
+  hometowns: string[];
+  hometown_same_bonus: boolean;
+  smoking: string;
+  drinking: string;
+  marriage_timing: string;
+  jobs: string[];
+  tattoo: string;
+  personality_keywords: string[];
+  free_text: string;
+  priorities: string[];
+}>;
+
 export function PreferencesForm({
+  action,
   defaultValues,
+  variant = "onboarding",
 }: {
-  defaultValues?: Partial<{
-    age_from: number;
-    age_to: number;
-    regions: string[];
-    hometowns: string[];
-    hometown_same_bonus: boolean;
-    smoking: string;
-    drinking: string;
-    marriage_timing: string;
-    jobs: string[];
-    tattoo: string;
-    personality_keywords: string[];
-    free_text: string;
-    priorities: string[];
-  }>;
-} = {}) {
+  action: (formData: FormData) => Promise<void>;
+  defaultValues?: PreferencesFormDefaults;
+  variant?: "onboarding" | "edit";
+}) {
   // §1
   const [ageFrom, setAgeFrom] = React.useState<number | null>(
     defaultValues?.age_from ?? null,
@@ -92,11 +98,7 @@ export function PreferencesForm({
   );
 
   return (
-    <form
-      // TODO(worker): action={submitPreferencesAction}
-      action="#todo-server-action"
-      className="space-y-4"
-    >
+    <form action={action} className="space-y-4">
       <FormSection title="§1 선호 조건" subtitle="채워둔 항목만 매칭에 반영돼요">
         <Field
           label="선호 나이대 (출생연도)"
@@ -271,7 +273,7 @@ export function PreferencesForm({
       </FormSection>
 
       <Button size="lg" type="submit" className="w-full">
-        저장하고 다음 →
+        {variant === "edit" ? "저장" : "저장하고 다음 →"}
       </Button>
     </form>
   );
