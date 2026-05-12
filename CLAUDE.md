@@ -38,17 +38,16 @@ Non-goal (의도적 제외, V1):
 | 프레임워크 | Next.js 16 (App Router) + TypeScript |
 | 스타일링 | Tailwind CSS 4 (`@theme` 토큰) + 자체 작성 UI 프리미티브 (`components/ui/*`) |
 | 폰트 | Geist Sans / Geist Mono + 시스템 한국어 폰트 fallback |
-| Auth + DB | Supabase (Postgres + Google OAuth + 이메일 화이트리스트) |
+| Auth + DB | Supabase (Postgres + Google OAuth — 운영자 화이트리스트 + 가입자 자가 가입) |
 | 키 체계 | publishable / secret (구 anon/service_role도 fallback — D-002) |
 | DB 액세스 | `@supabase/ssr` — service-role 클라이언트 단일 채널 (RLS deny-all + 앱 레이어 인가 — D-001 §D2) |
-| 토큰 생성 | nanoid customAlphabet (32자 URL-safe, D-001 §D12) |
-| 라우트 가드 | `proxy.ts` (Next.js 16 — 구 middleware) |
-| **단위/통합 테스트** | **Vitest + React Testing Library** (도입 예정) |
-| **E2E 테스트** | **Playwright** (도입 예정) |
+| 라우트 가드 | `proxy.ts` (Next.js 16) — `resolveGuardTarget` 순수 함수 호출, V2 가드 매트릭스 (PRD §5.5) |
+| **단위/통합 테스트** | Vitest + React Testing Library (`tests/{unit,integration}/`) |
+| **E2E 테스트** | Playwright (`e2e/tests/`) |
 | 배포 | Vercel Hobby (Free) |
 | 도메인 | vercel.app 서브도메인 |
 
-선택 근거는 [`docs/PRD.md`](./docs/PRD.md) §7 + 결정 로그 `000`/`001`/`002`/`003` 참고.
+선택 근거는 [`docs/PRD.md`](./docs/PRD.md) §7 + 결정 로그 `000`~`006` 참고.
 
 ## 4. 디렉토리 구조
 
@@ -59,34 +58,39 @@ matchmaker/
 │   ├── PRD.md
 │   ├── deployment.md
 │   ├── review-and-improvements.md
-│   └── decisions/       # 000~003 + 작업별 NNN-<slug>.md
+│   └── decisions/       # 000~006 + 작업별 NNN-<slug>.md
 ├── app/
-│   ├── (operator)/      # 인증 필요 라우트 그룹 (대시보드/친구/설문/매칭/설정)
-│   ├── login/
-│   ├── auth/
-│   │   ├── callback/
-│   │   └── signout/
-│   ├── s/[token]/       # 친구 측 설문 (landing + [chapter] + done + expired)
-│   └── r/[token]/       # 친구 측 자가 등록 (landing + done + expired)
+│   ├── (operator)/      # 인증 필요 라우트 그룹 (대시보드/가입자/비교/설문/설정)
+│   ├── signup/          # Google OAuth 가입 진입
+│   ├── onboarding/      # 3-step 온보딩 (profile / preferences / survey)
+│   ├── me/              # 가입자 자기 페이지 (profile / preferences / survey/[chapter])
+│   ├── pending/         # 심사 대기 안내
+│   ├── rejected/        # 가입 거절 안내
+│   ├── login/           # 운영자 OAuth 진입
+│   └── auth/            # OAuth callback / signout
 ├── components/
-│   ├── ui/              # 자체 UI 프리미티브 (Button/Card/Input/Badge/Empty)
-│   └── operator/        # 도메인 컴포넌트 (Nav/FriendForm/SurveyEditor/AnswerView/SurveysTabs)
+│   ├── ui/              # 자체 UI 프리미티브 (Button/Card/Input/Badge/Empty/Stepper/
+│   │                    #  TabBar/MultiSelectChip/RangeSlider/RankingPicker/Field)
+│   ├── operator/        # 운영자 도메인 (Nav/FriendForm/SurveyEditor/AnswerView/
+│   │                    #  SurveysTabs/FriendsStatusTabs/FriendIdealSection/
+│   │                    #  IdealMatchRow/ReviewActions/DashboardWidgets)
+│   └── user/            # 가입자 도메인 (UserShell/OnboardingStepHeader/
+│                        #  MeSectionCard/StatusBanner)
 ├── lib/
 │   ├── supabase/        # server/client/proxy
-│   ├── auth/operator.ts # OPERATOR_EMAIL 화이트리스트 + SITE_OWNER_ID
-│   ├── db/              # friends/surveys/invitations/pairs/friend-invitations 쿼리 헬퍼
-│   ├── types/domain.ts
+│   ├── auth/            # operator / user / guard (V2 가드) / onboarding
+│   ├── db/              # friends / ideals / answers / surveys / pairs
+│   ├── types/           # domain (V2) / v2-options (옵션 사전)
+│   ├── validation/      # profile (ProfileSchema + Preferences FormData 파싱)
 │   └── utils.ts
-├── supabase/migrations/ # SQL 마이그레이션 (0001_init, 0002_friend_invitations)
+├── supabase/migrations/ # 0001_init / 0002_friend_invitations / 0003_v2_self_signup
 ├── public/
-├── tests/               # (예정) Vitest 단위/통합
-├── e2e/                 # (예정) Playwright spec
+├── tests/               # Vitest 단위/통합 (unit/, integration/)
+├── e2e/                 # Playwright spec (tests/)
 ├── proxy.ts             # Next.js 16 proxy
 ├── CLAUDE.md            # 이 파일
 └── AGENTS.md            # 에이전트 운영 규칙
 ```
-
-> `tests/` / `e2e/` 디렉토리는 첫 TDD 작업 라운드에서 자연스럽게 생긴다. 위 구조는 그때 따라야 할 합의된 형태.
 
 ## 5. 디자인 시스템
 
@@ -117,43 +121,64 @@ PRD §6 + 결정 로그 기준. **Black base + Pink accent 다크 톤**. 두 청
 
 ## 6. 데이터 모델
 
-PRD §4 + 마이그레이션(`supabase/migrations/0001_init.sql`, `0002_friend_invitations.sql`). 7개 테이블:
+PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql`).
 
 | 테이블 | 역할 | 핵심 규칙 |
 |---|---|---|
-| `friends` | 친구 카드 (Tier 1~3 + 상태) | 모든 row에 `owner_id = SITE_OWNER_ID` |
-| `surveys` | 표준 / 커스텀 설문 | owner당 active standard 1개 강제 (partial unique index) |
-| `survey_chapters` | 챕터 그룹 | `order_index` 기반 정렬 |
-| `survey_questions` | 문항 + jsonb options | type: mcq_single/mcq_multi/likert/ranking/text |
-| `survey_invitations` | (Friend × Survey) 1회용 토큰 | status: pending → in_progress → completed (만료) |
-| `survey_answers` | invitation × question | jsonb value, upsert (invitation_id, question_id) |
-| `pairs` | 두 친구의 비교 메모 + 매칭 이력 통합 | CHECK `friend_a_id < friend_b_id` + UNIQUE — 한 쌍 1행 |
-| `friend_invitations` | 자가 등록 1회용 토큰 | status: pending → used, atomic consume |
+| `friends` | 가입자 (V2 확장 후) | `auth_user_id UNIQUE` + `recommender_*` NOT NULL + `status` CHECK + `onboarding_step` (1/2/3/null) |
+| `friend_ideals` | 이상형 단일값 (1:1) | `friend_id` PK, ON DELETE CASCADE. smoking/drinking/marriage_timing/tattoo enum + age_from/age_to + hometown_same_bonus + free_text |
+| `friend_ideal_regions` | 선호 거주지역 다중 (1:N) | PRIMARY KEY (friend_id, region) |
+| `friend_ideal_hometowns` | 선호 출신지역 다중 (1:N) | PRIMARY KEY (friend_id, hometown) |
+| `friend_ideal_jobs` | 선호 직업군 다중 (1:N) | PRIMARY KEY (friend_id, job) |
+| `friend_ideal_personality_keywords` | 성격 키워드 다중 (1:N) | PRIMARY KEY (friend_id, keyword) |
+| `friend_ideal_priorities` | 매칭 우선순위 top 3 (1:N ranked) | (friend_id, rank) PK + (friend_id, category) UNIQUE + rank IN (1,2,3) |
+| `surveys` | 표준 / 커스텀 설문 | owner당 active standard 1개 강제 (V1 그대로) |
+| `survey_chapters` | 챕터 그룹 | `order_index` 기반 정렬 (V1 그대로) |
+| `survey_questions` | 문항 + jsonb options | type: mcq_single/mcq_multi/likert/ranking/text (V1 그대로) |
+| `survey_answers` | (friend_id × question_id) | **V2: 키 변경** — `invitation_id` 제거, `(friend_id, question_id)` UNIQUE upsert |
+| `pairs` | 두 가입자의 비교 메모 + 회고 노트장 | CHECK `friend_a_id < friend_b_id` + UNIQUE — 한 쌍 1행 (V1 그대로) |
+
+V2 폐기 테이블 (0003 마이그레이션이 DROP):
+- `survey_invitations` (V1 토큰 흐름)
+- `friend_invitations` (V1 운영자 발급 자가 등록 토큰)
+
+V2 friends 에서 제거된 V1 컬럼: `closeness`, `how_we_met`, `kakao_id`, `phone`.
 
 주요 규칙:
 - 모든 DB 호출은 `lib/db/*` 의 service-role 클라이언트로만 (RLS는 deny-all)
-- 인가는 `requireOperator()` + `owner_id` 필터로 앱 레이어에서
-- 친구 삭제 → ON DELETE CASCADE로 관련 invitation / answer / pair 모두 정리
-- 자가 등록 토큰 consume은 단일 함수에서 atomic (`consumeFriendInvitation`)
+- 운영자 인가: `requireOperator()` + `owner_id` 필터로 앱 레이어에서
+- 가입자 인가: `getCurrentUser` / `requireApprovedUser` / `assertOwnFriendRow` / `ensureNotOperator` (`lib/auth/user.ts`)
+- 가입자 삭제 → ON DELETE CASCADE 로 friend_ideals / 1:N 다섯 / survey_answers / pairs 모두 정리
 
 ## 7. 라우팅 / 사이트맵
 
 | URL | 인증 | 비고 |
 |---|---|---|
-| `/` | 운영자 | 대시보드 |
-| `/friends`, `/friends/new`, `/friends/[id]`, `/friends/[id]/edit` | 운영자 | 친구 CRUD + 상세 + 발송 이력 + Q&A 펼치기 |
-| `/friends/invites` | 운영자 | 자가 등록 링크 관리 (대기 + 등록 완료) |
-| `/compare?a=…&b=…` | 운영자 | 1:1 비교 뷰 (메타데이터 + 표준 설문 접기/펼치기 + Pair 패널) |
+| `/` | 운영자 | 대시보드 (심사 대기 / 가입자 현황 / 빠른 진입 위젯 3개) |
+| `/friends` | 운영자 | 가입자 리스트 + sub-tab (전체/심사 대기/승인/거절) |
+| `/friends/[id]` | 운영자 | 가입자 상세 (기본 + 이상형 + 설문 응답 + ReviewActions + Pair) |
+| `/friends/[id]/edit` | 운영자 | 가입자 정보 수정 (V2 컬럼) |
+| `/compare?a=…&b=…` | 운영자 | 1:1 비교 (메타데이터 + 이상형 양방향 매칭 + 표준 설문 + Pair 패널) |
 | `/surveys` (탭: 템플릿) | 운영자 | 표준 + 커스텀 hub |
 | `/surveys/standard` | 운영자 | 표준 설문 편집 |
 | `/surveys/custom/new`, `/surveys/custom/[id]` | 운영자 | 커스텀 설문 |
-| `/surveys/send` (탭: 발송) | 운영자 | 새 토큰 발급 |
-| `/surveys/invitations` (탭: 이력) | 운영자 | 발송 이력 — pending/completed CRUD |
-| `/matches` | 운영자 | 💘 큐피드 발동 이력 |
 | `/settings` | 운영자 | 운영자 설정 |
-| `/login`, `/auth/callback`, `/auth/signout` | — | Google OAuth |
-| `/s/[token]` (+ `[chapter]` / `done` / `expired`) | 친구 (토큰) | 챕터식 설문 + 자동저장 |
-| `/r/[token]` (+ `done` / `expired`) | 친구 (토큰) | 자가 등록 폼 |
+| `/signup` | — | Google OAuth 가입 진입 |
+| `/onboarding/profile` | 가입자 (friends row 없음) | Step 1 (필수: 이름·성별·성취향·추천인) |
+| `/onboarding/preferences` | 가입자 (onboarding_step=2) | Step 2 (이상형, 선택) |
+| `/onboarding/survey` | 가입자 (onboarding_step=3) | Step 3 (연애 성향 테스트, 선택) |
+| `/me` | 가입자 (approved) | 자기 페이지 (대시보드) |
+| `/me/profile` | 〃 | 본인 프로필 수정 |
+| `/me/preferences` | 〃 | 이상형 수정 |
+| `/me/survey` | 〃 | 설문 진행 / 재진입 |
+| `/me/survey/[chapter]` | 〃 | 챕터 runner (자동 저장) |
+| `/pending` | 가입자 (status=pending) | 심사 대기 안내 |
+| `/rejected` | 가입자 (status=rejected) | 가입 거절 안내 |
+| `/login`, `/auth/callback`, `/auth/signout` | — | OAuth (운영자·가입자 공용) |
+
+V2 에서 폐기된 V1 라우트: `/friends/new`, `/friends/invites`, `/surveys/send`, `/surveys/invitations`, `/matches`, `/r/[token]/**`, `/s/[token]/**`.
+
+라우팅 가드 매트릭스 (OAuth × 운영자 화이트리스트 × `friends.status` × `onboarding_step`) 는 `lib/auth/guard.ts` 의 `resolveGuardTarget` 순수 함수로 분리되어 있다 (PRD §5.5 + decisions/006).
 
 ## 8. 코딩 컨벤션
 
@@ -233,7 +258,7 @@ SUPABASE_SECRET_KEY=sb_secret_...
 OPERATOR_EMAIL=alice@gmail.com,bob@gmail.com
 OPERATOR_DISPLAY_NAME=운영자이름
 
-# 토큰 링크 베이스
+# OAuth callback base URL
 NEXT_PUBLIC_APP_URL=https://<vercel-domain>.vercel.app
 ```
 
