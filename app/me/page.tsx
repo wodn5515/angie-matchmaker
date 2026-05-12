@@ -1,30 +1,70 @@
 import { UserShell } from "@/components/user/user-shell";
 import { StatusBanner } from "@/components/user/status-banner";
 import { MeSectionCard } from "@/components/user/me-section-card";
+import { requireApprovedUser } from "@/lib/auth/user";
+import {
+  createSupabaseServiceClient,
+} from "@/lib/supabase/server";
+import { getFriendIdealAggregate } from "@/lib/db/ideals";
+import { ensureStandardSurvey, listQuestionsBySurvey } from "@/lib/db/surveys";
+import { listAnswersForFriend } from "@/lib/db/answers";
+import { SITE_OWNER_ID } from "@/lib/auth/operator";
 
 export const dynamic = "force-dynamic";
 
 /**
  * V2 가입자 대시보드.
- * PRD §3.3.1 + §6.3 — 자기 정보 요약 + 분기 카드 3개.
+ * PRD §3.3.1 + §6.3 — 본인 정보 요약 + 분기 카드 3개.
  *
- * TODO(worker, task-C):
- *  - requireUser() + status=approved 검증 (pending → /pending 으로 가드)
- *  - 본인 friends row + friend_ideals + survey_answers 조회
- *  - profile/preferences/survey 각 입력 완성도 계산 → 카드 status·강조 표시
- *  - 완성도 prop 으로 카드에 전달
+ * proxy 가드가 status='approved' 가입자만 진입시킨다. 운영자/pending/rejected 분기 X.
  */
 export default async function MePage() {
-  // TODO(worker): 실제 데이터 fetch
-  // const user = await requireUser({ status: "approved" });
-  // const profileCompletion = ...; const hasIdeals = ...; const surveyDone = ...;
+  const user = await requireApprovedUser();
 
-  // 디자이너 골격용 mock — worker 가 교체
-  const userName = "민수";
-  const profileCompletion: number = 8; // 13 중 8
-  const profileMax: number = 13;
-  const hasIdeals: boolean = false;
-  const surveyDone: boolean = false;
+  const service = createSupabaseServiceClient();
+  const { data: friend } = await service
+    .from("friends")
+    .select(
+      "name, birth_year, region, hometown, occupation, instagram, relationship_status, match_interest",
+    )
+    .eq("id", user.friendId)
+    .single();
+
+  // 프로필 완성도 — 권장 7 + 필수 4(고정) + 추천인 2(필수) = 13
+  // 필수는 이미 완료(가입 통과). 권장 7개 중 채운 갯수만 점수화.
+  const optionalFields = [
+    friend?.birth_year != null,
+    !!friend?.region,
+    !!friend?.hometown,
+    !!friend?.occupation,
+    !!friend?.instagram,
+    friend?.relationship_status != null,
+    friend?.match_interest != null,
+  ];
+  const optionalFilled = optionalFields.filter(Boolean).length;
+  // 필수 5(이름·성별·선호 성별·추천인 이름·관계) 항상 채워짐 + 권장 7 → 12 만점 + 가입 자체 1 = 13
+  const profileCompletion = 6 + optionalFilled;
+  const profileMax = 13;
+
+  // 이상형 작성 여부 — friend_ideals row 또는 1:N 중 하나라도 있으면 작성됨
+  const ideal = await getFriendIdealAggregate(user.friendId);
+  const hasIdeals =
+    ideal.ideals !== null ||
+    ideal.regions.length > 0 ||
+    ideal.hometowns.length > 0 ||
+    ideal.jobs.length > 0 ||
+    ideal.personality_keywords.length > 0 ||
+    ideal.priorities.length > 0;
+
+  // 설문 응답 완성도
+  const standard = await ensureStandardSurvey(SITE_OWNER_ID);
+  const questions = await listQuestionsBySurvey(standard.id);
+  const questionIds = questions.map((q) => q.id);
+  const answers = await listAnswersForFriend(user.friendId, questionIds);
+  const surveyDone = answers.length === questions.length && questions.length > 0;
+  const surveyInProgress = answers.length > 0 && !surveyDone;
+
+  const userName = friend?.name ?? "";
 
   return (
     <UserShell>
@@ -56,7 +96,7 @@ export default async function MePage() {
             statusTone={
               profileCompletion === profileMax
                 ? "success"
-                : profileCompletion >= 4
+                : profileCompletion >= 8
                   ? "neutral"
                   : "warn"
             }
@@ -70,23 +110,29 @@ export default async function MePage() {
             statusTone={hasIdeals ? "success" : "warn"}
             highlight={!hasIdeals}
             warningText={
-              hasIdeals
-                ? undefined
-                : "작성 안 하면 매칭 확률이 낮아져요"
+              hasIdeals ? undefined : "작성 안 하면 매칭 확률이 낮아져요"
             }
           />
           <MeSectionCard
             href="/me/survey"
             icon="💌"
             title="연애 성향 테스트"
-            description="짧은 챕터 식 질문들"
-            statusLabel={surveyDone ? "응답 완료" : "응답 안 함"}
-            statusTone={surveyDone ? "success" : "warn"}
-            highlight={!surveyDone}
-            warningText={
+            description={
+              surveyInProgress
+                ? `진행 중 — ${answers.length}/${questions.length}`
+                : "짧은 챕터 식 질문들"
+            }
+            statusLabel={
               surveyDone
-                ? undefined
-                : "작성 안 하면 매칭 확률이 낮아져요"
+                ? "응답 완료"
+                : surveyInProgress
+                  ? "진행 중"
+                  : "응답 안 함"
+            }
+            statusTone={surveyDone ? "success" : surveyInProgress ? "neutral" : "warn"}
+            highlight={!surveyDone && !surveyInProgress}
+            warningText={
+              surveyDone ? undefined : "작성 안 하면 매칭 확률이 낮아져요"
             }
           />
         </div>
