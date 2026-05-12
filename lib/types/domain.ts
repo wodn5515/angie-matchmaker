@@ -1,3 +1,18 @@
+/**
+ * matchmaker V2 도메인 타입.
+ *
+ * V1 의 운영자가 친구를 직접 등록하던 모델은 폐기되고, 자가 가입자 + 운영자 검토
+ * 모델로 전환됨 (decisions/004 / PRD §1.1).
+ *
+ * V1 에서 제거된 friends 컬럼: closeness, how_we_met, kakao_id, phone.
+ * V1 에서 추가된 friends 컬럼: auth_user_id, email, hometown, recommender_name,
+ *   recommender_relation, status, rejected_reason, onboarding_step.
+ *
+ * V2 신규 테이블: friend_ideals 1:1 + friend_ideal_{regions,hometowns,jobs,
+ *   personality_keywords,priorities} 5개.
+ * V2 폐기 테이블: survey_invitations, friend_invitations.
+ */
+
 export type Gender = "male" | "female" | "other";
 export type PreferredGender = "male" | "female" | "any";
 export type RelationshipStatus =
@@ -7,33 +22,91 @@ export type RelationshipStatus =
   | "complicated"
   | "unknown";
 export type MatchInterest = "high" | "medium" | "low" | "none";
+export type FriendStatus = "pending" | "approved" | "rejected";
+export type OnboardingStep = 1 | 2 | 3 | null;
 
 export type Friend = {
   id: string;
   owner_id: string;
-  // Tier 1
+  // OAuth 가입자만 채워짐. 운영자가 직접 등록하던 V1 흐름 폐기 (운영자는 friends row 미보유).
+  auth_user_id: string | null;
+  email: string | null;
+  // 가입자 본인 입력
   name: string;
   gender: Gender;
   preferred_gender: PreferredGender;
-  // Tier 2
+  // 권장 정보
   birth_year: number | null;
   region: string | null;
+  hometown: string | null;
   occupation: string | null;
-  closeness: number | null; // 1~5
-  how_we_met: string | null;
-  tags: string[] | null;
-  // Tier 3
   instagram: string | null;
-  kakao_id: string | null;
-  phone: string | null;
-  notes: string | null;
-  // Operator-set status
   relationship_status: RelationshipStatus | null;
   match_interest: MatchInterest | null;
+  // 추천인 (가입 시 필수 — server-side validation 으로 빈 문자열 거절)
+  recommender_name: string;
+  recommender_relation: string;
+  // 심사 / 온보딩
+  status: FriendStatus;
+  rejected_reason: string | null;
+  onboarding_step: OnboardingStep;
+  // 운영자 큐레이션
+  tags: string[] | null;
+  notes: string | null;
 
   created_at: string;
   updated_at: string;
 };
+
+// ──────────────────────────────────────────────────────────────
+// 이상형 (friend_ideals 1:1 + 1:N 5개)
+// ──────────────────────────────────────────────────────────────
+
+export type SmokingPreference = "any" | "non_smoker_only";
+export type DrinkingPreference =
+  | "any"
+  | "often_ok"
+  | "sometimes_only"
+  | "non_drinker_only";
+export type MarriageTiming = "any" | "within_2y" | "over_3y" | "dating_focus";
+export type TattooPreference = "any" | "none_only" | "small_ok";
+export type PriorityCategory =
+  | "appearance"
+  | "personality"
+  | "stability"
+  | "marriage_view"
+  | "values"
+  | "lifestyle";
+
+export type FriendIdeals = {
+  friend_id: string;
+  age_from: number | null;
+  age_to: number | null;
+  hometown_same_bonus: boolean;
+  smoking: SmokingPreference | null;
+  drinking: DrinkingPreference | null;
+  marriage_timing: MarriageTiming | null;
+  tattoo: TattooPreference | null;
+  free_text: string | null;
+  updated_at: string;
+};
+
+export type FriendIdealRegion = { friend_id: string; region: string };
+export type FriendIdealHometown = { friend_id: string; hometown: string };
+export type FriendIdealJob = { friend_id: string; job: string };
+export type FriendIdealKeyword = { friend_id: string; keyword: string };
+export type FriendIdealPriority = {
+  friend_id: string;
+  rank: 1 | 2 | 3;
+  category: PriorityCategory;
+};
+
+// ──────────────────────────────────────────────────────────────
+// surveys / chapters / questions / answers
+//   - surveys, survey_chapters, survey_questions: V1 그대로
+//   - survey_answers: 키가 (invitation_id, question_id) → (friend_id, question_id)
+//   - survey_invitations: 폐기 (V2 에서 토큰 흐름 사라짐)
+// ──────────────────────────────────────────────────────────────
 
 export type SurveyType = "standard" | "custom";
 
@@ -44,7 +117,6 @@ export type Survey = {
   title: string;
   description: string | null;
   is_active: boolean;
-  // Custom surveys may target a specific friend (informational only).
   target_friend_id: string | null;
   created_at: string;
   updated_at: string;
@@ -88,36 +160,24 @@ export type SurveyQuestion = {
   order_index: number;
   type: QuestionType;
   prompt: string;
-  // Stored as jsonb. Shape depends on type.
   options: unknown;
   required: boolean;
 };
 
-export type SurveyAnswerValue =
-  | string // mcq_single, text
-  | string[] // mcq_multi, ranking
-  | number // likert
-  | null;
+export type SurveyAnswerValue = string | string[] | number | null;
 
 export type SurveyAnswer = {
   id: string;
-  invitation_id: string;
+  // V2: invitation_id 폐기, friend_id 로 키 변경 (PRD §4.6)
+  friend_id: string;
   question_id: string;
   value: SurveyAnswerValue;
   updated_at: string;
 };
 
-export type InvitationStatus = "pending" | "in_progress" | "completed";
-
-export type SurveyInvitation = {
-  id: string;
-  token: string;
-  friend_id: string;
-  survey_id: string;
-  status: InvitationStatus;
-  created_at: string;
-  completed_at: string | null;
-};
+// ──────────────────────────────────────────────────────────────
+// pairs (V1 그대로 — 운영자 회고 노트장)
+// ──────────────────────────────────────────────────────────────
 
 export type PairOutcome = "good" | "bad" | "in_progress" | "unknown";
 
@@ -134,6 +194,10 @@ export type Pair = {
   created_at: string;
   updated_at: string;
 };
+
+// ──────────────────────────────────────────────────────────────
+// 라벨 lookup
+// ──────────────────────────────────────────────────────────────
 
 export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
   mcq_single: "객관식 (단일선택)",
@@ -175,4 +239,10 @@ export const PREFERRED_GENDER_LABEL: Record<PreferredGender, string> = {
   male: "남성",
   female: "여성",
   any: "상관없음",
+};
+
+export const FRIEND_STATUS_LABEL: Record<FriendStatus, string> = {
+  pending: "심사 대기",
+  approved: "승인됨",
+  rejected: "거절됨",
 };
