@@ -59,16 +59,16 @@ ln -sf "$(pwd)/.claude/settings.local.json" ".worktrees/feature-$0/.claude/setti
 ## 2.4단계: 디자이너 게이트 (UI 비중이 큰 작업이면 단발 호출)
 
 작업 성격이 다음 중 하나면 Lead가 **TDD 게이트보다 먼저** `designer`를 단발 호출한다 ([`AGENTS.md`](../../../AGENTS.md) §5-4 참고):
-- 디자인 시스템 초기 구축 (tailwind.config, globals.css, 디자인 토큰, shadcn 베이스)
-- 메인 대시보드 위젯 5종 신규
-- 새 페이지 레이아웃 신설
-- 모달 UX 신규
+- 디자인 시스템 변경 (`app/globals.css` @theme 토큰, `friend-shell` 같은 글로벌 유틸 재설계)
+- 신규 페이지 레이아웃 첫 구현 (예: 운영자 신규 화면, 친구 측 새 흐름)
+- 신규 모달 UX (큰 폼 / 다단계 위저드)
+- UI 프리미티브 셋 확장 (`components/ui/*` 신규 컴포넌트)
 
 ```
 Agent({
   subagent_type: "designer",
-  description: "Boon UI 골격 구현",
-  prompt: "워크트리: <절대경로>\n작업 주제: <한 줄>\n관련 PRD/결정: <PRD §6 / D-019~D-022>\n구체 요청: <어떤 컴포넌트/페이지를>\n\n제약: 테스트 파일·데이터 모델 수정 금지. shadcn + Tailwind + Pretendard, 베이지/초록 톤. 모바일 퍼스트 반응형. [ui] prefix로 커밋하고 보고 후 종료."
+  description: "matchmaker UI 골격 구현",
+  prompt: "워크트리: <절대경로>\n작업 주제: <한 줄>\n관련 PRD/결정: <PRD §6 / decisions/...>\n구체 요청: <어떤 컴포넌트/페이지를>\n\n제약: 테스트 파일·마이그레이션 수정 금지. Tailwind 4 + components/ui 자체 프리미티브, Black/Pink 다크 톤. 친구 측은 friend-shell 그라데이션 활용. 모바일 우선 반응형. Server → Client function prop 금지. [ui] prefix로 커밋하고 보고 후 종료."
 })
 ```
 
@@ -83,17 +83,18 @@ team_name·name 없이 단발 호출. designer가 보고하면 **Lead가 자율�
 
 | 작업 성격 | test-writer 선호출 |
 |-----------|---------------------|
-| 새 라우트 / 기존 라우트 동작 변경 | **필수** |
-| 폼 제출·검증, 세션·인증·권한 게이트 | **필수** |
-| 비즈니스 룰 (카테고리 이전, 친구 매칭, 보답 시점 등) | **필수** |
-| 사용자 진입 페이지/네비게이션 변경 | **필수** |
-| 새 알림/뱃지/토스트 등 사용자 가시 상태 | **필수** |
-| 데이터 모델 변경 (마이그레이션 포함) | **필수** (통합 테스트로 검증) |
-| 순수 스타일 리뉴얼 (Tailwind 마이그레이션 등) | 선택 — 기존 smoke 회귀만 |
+| 새 라우트 / 기존 라우트 동작 변경 (`app/(operator)/**`, `app/s/**`, `app/r/**`) | **필수** |
+| 폼 제출·검증 (FriendForm, SurveyEditor, registration-form 등) | **필수** |
+| 세션·인증·권한 게이트 (`OPERATOR_EMAIL` 화이트리스트, `requireOperator`) | **필수** |
+| 비즈니스 룰 (토큰 만료, 자동저장 debounce, Pair 정렬, atomic consume 등) | **필수** |
+| 비교 뷰 / 매칭 흐름 (compareValues 분기, Cupid toggle 등) | **필수** |
+| 데이터 모델 변경 (`supabase/migrations/**`) | **필수** (통합 테스트로 검증) |
+| 친구 측 설문 / 자가 등록 사용자 흐름 변경 | **필수** (E2E 우선) |
+| 순수 스타일 리뉴얼 (Tailwind 토큰 조정 등) | 선택 — 기존 smoke 회귀만 |
 | 문구/카피, 정적 링크 텍스트 변경 | 불필요 |
 | 내부 리팩토링 (외부 동작 동일) | 불필요 |
 | 마이그레이션 단독, infra/CI 설정 | 불필요 |
-| 문서·주석 변경 | 불필요 |
+| 문서·주석 변경 | 불필요 (`/meta` 대상) |
 
 생략한 경우 Lead가 한 줄로 사유를 결정 로그에 명시하고 3단계로 넘어간다 (예: "TDD 선작성 생략 — 사유: 스타일 리뉴얼만").
 
@@ -103,7 +104,7 @@ team_name·name 없이 단발 호출. designer가 보고하면 **Lead가 자율�
 Agent({
   subagent_type: "test-writer",
   description: "TDD 선작성 spec 작성",
-  prompt: "워크트리: <절대경로>\n작업 주제: <한 줄 요약>\n사용자 시나리오: <어떤 페이지에서, 어떤 행동이, 어떤 결과로>\n인증 컨텍스트: <비로그인 / 인증된 사용자>\n관련 데이터 모델: <users/friends/categories/entries 중 어느 것을 어떻게>\n기존 관련 spec: <경로 또는 '없음'>\n\n현재 코드 기준 빨갛게 실패하는 spec(E2E + 통합 + 단위 스켈레톤)을 작성하고 npm run test:e2e와 npm test로 실패를 확인한 뒤 보고해라. 구현은 절대 손대지 마라. 사용자 승인 요청 형식이 아니라 Lead에게 보고하는 형식으로."
+  prompt: "워크트리: <절대경로>\n작업 주제: <한 줄 요약>\n사용자 시나리오: <어떤 페이지에서, 어떤 행동이, 어떤 결과로>\n인증 컨텍스트: <비로그인 친구(토큰) / 운영자(OPERATOR_EMAIL 화이트리스트)>\n관련 데이터 모델: <friends / surveys / survey_chapters / survey_questions / survey_invitations / survey_answers / pairs / friend_invitations 중 어느 것을 어떻게>\n기존 관련 spec: <경로 또는 '없음'>\n\n현재 코드 기준 빨갛게 실패하는 spec(E2E + 통합 + 단위 스켈레톤)을 작성하고 npm run test:e2e와 npm test로 실패를 확인한 뒤 보고해라. 구현은 절대 손대지 마라. 사용자 승인 요청 형식이 아니라 Lead에게 보고하는 형식으로."
 })
 ```
 

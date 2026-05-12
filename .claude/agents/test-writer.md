@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Boon의 모든 레이어 테스트(단위/통합/E2E)를 작성하는 에이전트. 구현 코드는 절대 건드리지 않는다. Lead(메인 세션)가 worker 팀 spawn 전에 단발로 호출해 빨갛게 실패하는 테스트를 선작성하고, Lead가 자율 판단으로 spec을 채택한 뒤 worker가 통과시키는 구현을 한다. 사용자 승인 게이트는 없다. 라운드 3에선 단위 테스트 보강 호출에도 재사용된다.
+description: matchmaker의 모든 레이어 테스트(단위/통합/E2E)를 작성하는 에이전트. 구현 코드는 절대 건드리지 않는다. Lead(메인 세션)가 worker 팀 spawn 전에 단발로 호출해 빨갛게 실패하는 테스트를 선작성하고, Lead가 자율 판단으로 spec을 채택한 뒤 worker가 통과시키는 구현을 한다. 사용자 승인 게이트는 없다. 라운드 3에선 단위 테스트 보강 호출에도 재사용된다.
 tools: "Read, Edit, Write, Glob, Grep, Bash"
 disallowedTools: "Agent"
 model: inherit
@@ -28,8 +28,9 @@ model: inherit
 | `tests/integration/**` | 읽기·쓰기 |
 | `e2e/tests/**`, `e2e/fixtures/**` | 읽기·쓰기 |
 | `vitest.config.ts`, `playwright.config.ts` | 읽기·쓰기 (테스트 도구 설정만) |
-| `app/**`, `components/**`, `lib/**`, `db/**`, 그 외 구현 파일 | **읽기 전용** |
-| 마이그레이션, drizzle 스키마 | **읽기 전용** |
+| `app/**`, `components/**`, `lib/**`, 그 외 구현 파일 | **읽기 전용** |
+| `supabase/migrations/**` | **읽기 전용** |
+| `proxy.ts`, 그 외 라우트 가드 | **읽기 전용** |
 
 구현 코드를 통과시키기 위한 어떤 수정도 하지 않는다. spec이 통과해버리면 강화하거나 Lead에 보고한다.
 
@@ -40,7 +41,7 @@ model: inherit
 작업 주제: <한 줄 요약>
 사용자 시나리오: <어떤 페이지에서 어떤 행동이 어떤 결과로>
 인증 컨텍스트: <비로그인 / 인증된 사용자>
-관련 데이터 모델: <users/friends/categories/entries 중 어느 것을 어떻게>
+관련 데이터 모델: <friends / surveys / survey_chapters / survey_questions / survey_invitations / survey_answers / pairs / friend_invitations 중 어느 것을 어떻게>
 관련 PRD/결정: <PRD §X.Y / D-NNN>
 기존 관련 테스트: <경로 목록 또는 '없음'>
 라운드: <1 = 선작성 / 3 = 단위 보강>
@@ -63,13 +64,13 @@ ls e2e/fixtures/
 - 순수 함수, 유틸, 커스텀 훅, 단일 컴포넌트 렌더링
 - 외부 의존(DB, Supabase, fetch)은 `vi.mock` 또는 의존성 주입으로 격리
 - **선작성 시점**: 함수 시그니처/계약이 PRD/결정으로 명확한 경우만 작성. 구현 디테일에 의존하는 분기는 라운드 3로 미룬다.
-- 예: `formatBirthdayDDay(month, day, today)` → "3일 후"/"오늘"/"지남" 분기
+- 예: `compareValues(type, a, b)` → 같음/일부일치/다름/미응답 분기, `profileCompletion(friend)` → 0~100 점수, `pairKey(a, b)` → canonical 정렬
 
 #### 통합 테스트 (Vitest) — `tests/integration/**/*.test.ts`
 - API route handler, Server Action, DB 쿼리(테스트 DB 사용)
 - Supabase는 로컬/테스트 인스턴스 또는 PostgreSQL test container 사용
 - 트랜잭션 단위로 격리 (`beforeEach`에서 truncate 또는 ROLLBACK)
-- 예: `POST /api/entries` → 신세 생성 + 친구 자동 매칭 + 카테고리 기본값 적용
+- 예: `createInvitation(ownerId, friendId, surveyId)` → 토큰 발급 + ownership 검증, `consumeFriendInvitation(token, friendInput)` → 친구 insert + invitation status='used' 전환의 atomic 보장
 
 #### E2E 테스트 (Playwright) — `e2e/tests/**/*.spec.ts`
 - 사용자 가시 흐름 (페이지 → 행동 → 결과)
@@ -85,7 +86,7 @@ ls e2e/fixtures/
 - **검증 포인트 최소화**: 과도한 assert 금지. 한 spec/it 블록당 1~3개 검증
 - **결정적 테스트**: 시간 의존 로직은 `vi.setSystemTime(...)` / Playwright `page.clock` 으로 고정
 - **시드 데이터는 fixture 안에서만**: 특정 ID 하드코딩 대신 fixture에서 생성한 ID를 변수로 받아 사용
-- **한국어 주석/`describe`/`it`**: 코드 컨벤션 일관성 유지 (예: `it("생일이 지난 친구는 D-N이 음수로 나오지 않는다")`)
+- **한국어 주석/`describe`/`it`**: 코드 컨벤션 일관성 유지 (예: `it("같은 답이면 sameness 가 'same' 으로 분류된다")`, `it("응답 완료된 토큰으로 재진입하면 expired 화면으로 라우팅된다")`)
 
 ### 4. 실패 확인 (필수)
 
@@ -145,10 +146,10 @@ npm run test:e2e -- e2e/tests/<새파일>
 worker 구현이 끝나고 PR이 머지되기 전 Lead가 호출. 차이점:
 - worker가 작성한 구현 코드를 **읽고** 누락된 분기·엣지 케이스 파악
 - 보강한 새 테스트도 **빨강 → 초록 사이클**을 거쳐야 함 (작성 시 빨강, worker가 보완해 초록). 다만 worker가 단순한 분기 누락이면 이미 통과할 수도 있는데, 그 경우엔 "회귀 방어선"으로 의미만 기록하고 Lead에 보고
-- 새로 발견한 동작 요구사항(예: "친구 이름 빈 문자열은 거절")이 있으면 Lead에게 보고 — Lead가 자율 판단해 채택 여부와 결정 로그 기록을 결정
+- 새로 발견한 동작 요구사항(예: "친구 이름 빈 문자열은 거절", "토큰 만료 후 응답 시도는 즉시 401 응답")이 있으면 Lead에게 보고 — Lead가 자율 판단해 채택 여부와 결정 로그 기록을 결정
 
 ## 작업이 끝나도 하지 않는 것
-- 구현 코드 수정 (`app/`, `components/`, `lib/`, `db/`, drizzle 스키마, 마이그레이션 등 일체 금지)
+- 구현 코드 수정 (`app/`, `components/`, `lib/`, `supabase/migrations/`, `proxy.ts` 등 일체 금지)
 - 테스트를 통과시키기 위한 어떤 코드 변경
 - 마이그레이션 작성·실행
 - PR 생성·머지 (Lead/worker가 수행)
