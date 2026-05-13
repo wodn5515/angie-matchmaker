@@ -182,3 +182,75 @@ PRD §3.4.2 비교 뷰 확장의 핵심이 **이상형 양방향 매칭 ✅⚠�
 - 검색 hay 한글화
 - E2E P1 storageState 셋업
 - self-traits 와 별 PR 로 분리 진행
+
+## TDD 게이트 spec 채택 (test-writer 라운드 1 결과)
+
+test-writer 단발 호출 (커밋 `4d172e5`) 결과 전량 채택. 3 spec 파일 / 71 케이스 / 빨강 36 / 통과 3 (negative invariant) / 기존 회귀 X (193 passed).
+
+### S1. spec 파일 채택
+
+| 결정 | 파일 | 케이스 |
+|---|---|---|
+| D1 (마이그레이션) | `tests/integration/migration-0005.test.ts` | 17 (SQL 텍스트 파싱 — 0003/0004 패턴) |
+| D5 (라벨 helper) | `tests/unit/self-traits-labels.test.ts` | 22 (4 helper × 정확 매칭 + raw fallback + null) |
+| D4 (매칭 매트릭스) | `tests/unit/compare-self-trait.test.ts` | 32 (smoking 6 + drinking 9 + marriage 9 + tattoo 6 + neutral 공통) |
+
+### S2. worker 가 채울 인터페이스
+
+```ts
+// lib/types/v2-options.ts (helper 4 추가)
+export type SmokingSelf = "non_smoker" | "occasional" | "regular";
+export type DrinkingSelf = "non_drinker" | "sometimes" | "often";
+export type MarriageViewSelf = "within_2y" | "over_3y" | "dating_focus";
+export type TattooSelf = "none" | "small" | "large";
+
+export const SELF_SMOKING_LABEL: Record<SmokingSelf, string>;
+export const SELF_DRINKING_LABEL: Record<DrinkingSelf, string>;
+export const SELF_MARRIAGE_VIEW_LABEL: Record<MarriageViewSelf, string>;
+export const SELF_TATTOO_LABEL: Record<TattooSelf, string>;
+
+export function getSmokingLabel(value: string | null | undefined): string;
+export function getDrinkingLabel(value: string | null | undefined): string;
+export function getMarriageViewLabel(value: string | null | undefined): string;
+export function getTattooLabel(value: string | null | undefined): string;
+
+// lib/db/self-trait-match.ts (신규 — 또는 ideals.ts 확장 + re-export)
+export type SelfTraitMatchKind = "same" | "partial" | "different" | "neutral";
+export function compareSelfTrait(args: {
+  idealValue: string | null;
+  profileValue: string | null;
+  kind: "smoking" | "drinking" | "marriage_view" | "tattoo";
+}): SelfTraitMatchKind;
+```
+
+### S3. 매칭 매트릭스 경계 (Lead 채택)
+
+test-writer 자율 결정 채택 — 운영자 의도 해석상 합리적:
+
+- **drinking sometimes_only + non_drinker → partial** (안 마셔도 OK 의도)
+- **drinking often_ok + 모든 본인 → same** (다 OK 의 의미)
+- **marriage_view 인접 단계 (within_2y↔over_3y, over_3y↔dating_focus) → partial**, **양 끝단 (within_2y↔dating_focus) → different**
+- **tattoo small_ok + none → same** (없는 것도 OK 범위)
+
+### S4. 라벨 텍스트 (009 §D5 본문 그대로 — worker 채택 권장)
+
+- smoking: 비흡연 / 가끔 핀다 / 자주 핀다
+- drinking: 안 마심 / 가끔 / 자주
+- marriage_view: 1~2년 내 결혼 / 3년 이후 결혼 / 연애 위주
+- tattoo: 없음 / 작은 것 / 큰·여러 개
+
+worker 가 운영자 디테일 톤 정리하다 미세 수정 원하면 spec 같이 수정 → Lead 보고.
+
+### S5. 약화·범위 메모
+
+- **`compareSelfTrait` 위치**: spec import 는 `@/lib/db/self-trait-match`. worker 가 `ideals.ts` 로 옮기고 싶다면 wrapper re-export 한 줄로 충분
+- **폼 검증 spec S4 생략**: 기존 `ProfileSchema` 가 모든 V2 권장 필드를 `.optional()` 패턴이라 신규 4 항목도 같은 패턴 — 별 spec 추가 가치 X
+- **운영자 디테일 / 비교 뷰 통합 spec 미작성**: 라벨 helper + 매칭 함수 단위 spec 이 회귀 방어선. 페이지 본체 통합 spec 은 사용자 가시 검증으로 충분
+
+### S6. worker 프롬프트 필수 사항
+
+- 위 인터페이스 그대로 채움
+- 매칭 매트릭스 경계 (S3) 그대로 — 변경 필요 시 Lead 보고
+- 라벨 텍스트 (S4) 변경 자유, 단 spec 의 정확 매칭 케이스도 같이 갱신 (또는 spec 약화)
+- 마이그레이션 0003·0004 미터치 (0005 신규)
+- README + CLAUDE.md 사실 영역 (§6 데이터 모델) 동기화 — 0005 명시
