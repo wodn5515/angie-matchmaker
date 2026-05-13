@@ -4,10 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
+/**
+ * V2 설문 하위 탭. V1 의 "발송" / "이력" 탭은 폐기 (decisions/004 — 토큰 흐름 사라짐).
+ * 템플릿 (표준 + 커스텀) 만 남는다.
+ */
 const TABS = [
-  { href: "/surveys", label: "템플릿", match: (p: string) => p === "/surveys" || p.startsWith("/surveys/standard") || p.startsWith("/surveys/custom") },
-  { href: "/surveys/send", label: "발송", match: (p: string) => p === "/surveys/send" || p.startsWith("/surveys/send/") },
-  { href: "/surveys/invitations", label: "이력", match: (p: string) => p === "/surveys/invitations" || p.startsWith("/surveys/invitations/") },
+  {
+    href: "/surveys",
+    label: "템플릿",
+    match: (p: string) =>
+      p === "/surveys" ||
+      p.startsWith("/surveys/standard") ||
+      p.startsWith("/surveys/custom"),
+  },
 ];
 
 export function SurveysTabs() {

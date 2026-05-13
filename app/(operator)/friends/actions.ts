@@ -4,30 +4,64 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireOperator } from "@/lib/auth/operator";
-import {
-  createFriend,
-  deleteFriend,
-  updateFriend,
-  type FriendInput,
-} from "@/lib/db/friends";
+import { deleteFriend, updateFriend } from "@/lib/db/friends";
 
-const FriendSchema = z.object({
-  // Tier 1
+/**
+ * V2 운영자가 가입자 정보 수정 / 삭제할 때 쓰는 Server Action.
+ *
+ * 운영자가 직접 신규 가입자를 만드는 흐름은 V2 에서 폐기됐다 (decisions/004).
+ * 따라서 createFriendAction 은 제거.
+ *
+ * status / rejected_reason 은 별도 review action (`[id]/actions.ts`) 가 담당.
+ */
+const FriendUpdateSchema = z.object({
   name: z.string().trim().min(1, "이름은 필수입니다").max(60),
   gender: z.enum(["male", "female", "other"]),
   preferred_gender: z.enum(["male", "female", "any"]),
-  // Tier 2
+  // 가입 시 입력된 추천인 정보의 의도를 보존 — 운영자도 임의로 비우지 못하게 min(1).
+  // 운영자가 다른 필드만 수정할 경우 폼이 defaultValue 로 기존 값을 그대로 제출하므로
+  // 자연 통과한다.
+  recommender_name: z
+    .string()
+    .trim()
+    .min(1, "추천인 이름은 비울 수 없습니다")
+    .max(80),
+  recommender_relation: z
+    .string()
+    .trim()
+    .min(1, "추천인 관계는 비울 수 없습니다")
+    .max(120),
   birth_year: z
-    .union([z.coerce.number().int().min(1900).max(new Date().getFullYear()), z.literal("")])
+    .union([
+      z.coerce.number().int().min(1900).max(new Date().getFullYear()),
+      z.literal(""),
+    ])
     .optional()
     .transform((v) => (v === "" || v == null ? null : Number(v))),
-  region: z.string().trim().max(80).optional().transform((v) => v || null),
-  occupation: z.string().trim().max(80).optional().transform((v) => v || null),
-  closeness: z
-    .union([z.coerce.number().int().min(1).max(5), z.literal("")])
+  region: z
+    .string()
+    .trim()
+    .max(80)
     .optional()
-    .transform((v) => (v === "" || v == null ? null : Number(v))),
-  how_we_met: z.string().trim().max(200).optional().transform((v) => v || null),
+    .transform((v) => v || null),
+  hometown: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((v) => v || null),
+  occupation: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((v) => v || null),
+  instagram: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((v) => v || null),
   tags_csv: z
     .string()
     .optional()
@@ -39,12 +73,12 @@ const FriendSchema = z.object({
             .filter(Boolean)
         : [],
     ),
-  // Tier 3
-  instagram: z.string().trim().max(80).optional().transform((v) => v || null),
-  kakao_id: z.string().trim().max(80).optional().transform((v) => v || null),
-  phone: z.string().trim().max(40).optional().transform((v) => v || null),
-  notes: z.string().trim().max(2000).optional().transform((v) => v || null),
-  // Status
+  notes: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .transform((v) => v || null),
   relationship_status: z
     .enum(["single", "dating", "married", "complicated", "unknown"])
     .or(z.literal(""))
@@ -57,69 +91,31 @@ const FriendSchema = z.object({
     .transform((v) => (v === "" || v == null ? null : v)),
 });
 
-function toFriendInput(parsed: z.infer<typeof FriendSchema>): FriendInput {
-  return {
-    name: parsed.name,
-    gender: parsed.gender,
-    preferred_gender: parsed.preferred_gender,
-    birth_year: parsed.birth_year,
-    region: parsed.region,
-    occupation: parsed.occupation,
-    closeness: parsed.closeness,
-    how_we_met: parsed.how_we_met,
-    tags: parsed.tags_csv,
-    instagram: parsed.instagram,
-    kakao_id: parsed.kakao_id,
-    phone: parsed.phone,
-    notes: parsed.notes,
-    relationship_status: parsed.relationship_status as FriendInput["relationship_status"],
-    match_interest: parsed.match_interest as FriendInput["match_interest"],
-  };
-}
-
 export type FriendActionResult =
   | { ok: true; friendId: string }
   | { ok: false; error: string };
-
-export async function createFriendAction(
-  formData: FormData,
-): Promise<FriendActionResult> {
-  const session = await requireOperator();
-  const parsed = FriendSchema.safeParse(Object.fromEntries(formData.entries()));
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "입력 오류" };
-  }
-  try {
-    const friend = await createFriend(session.userId, toFriendInput(parsed.data));
-    revalidatePath("/friends");
-    revalidatePath("/");
-    return { ok: true, friendId: friend.id };
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "친구를 등록하지 못했습니다",
-    };
-  }
-}
 
 export async function updateFriendAction(
   friendId: string,
   formData: FormData,
 ): Promise<FriendActionResult> {
   const session = await requireOperator();
-  const parsed = FriendSchema.safeParse(Object.fromEntries(formData.entries()));
+  const parsed = FriendUpdateSchema.safeParse(
+    Object.fromEntries(formData.entries()),
+  );
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "입력 오류" };
   }
   try {
-    await updateFriend(session.userId, friendId, toFriendInput(parsed.data));
+    const { tags_csv, ...rest } = parsed.data;
+    await updateFriend(session.userId, friendId, { ...rest, tags: tags_csv });
     revalidatePath("/friends");
     revalidatePath(`/friends/${friendId}`);
     return { ok: true, friendId };
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "친구 정보 수정 실패",
+      error: e instanceof Error ? e.message : "가입자 정보 수정 실패",
     };
   }
 }

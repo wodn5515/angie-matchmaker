@@ -25,8 +25,11 @@
 ### 1.2 스키마 적용
 
 1. 좌측 메뉴 → **SQL Editor** → **New query**
-2. 이 레포의 [`supabase/migrations/0001_init.sql`](../supabase/migrations/0001_init.sql) 전체 내용 붙여넣기
-3. **Run** 실행 → "Success. No rows returned" 메시지 확인
+2. 다음 마이그레이션을 **순서대로** 실행 (각 파일을 통째로 붙여넣고 Run):
+   - [`supabase/migrations/0001_init.sql`](../supabase/migrations/0001_init.sql) (V1 기반 스키마)
+   - [`supabase/migrations/0002_friend_invitations.sql`](../supabase/migrations/0002_friend_invitations.sql) (V1 토큰 흐름 — V2 가 곧 폐기)
+   - [`supabase/migrations/0003_v2_self_signup.sql`](../supabase/migrations/0003_v2_self_signup.sql) (V2 자가 가입 전환 — friends 확장 + friend_ideals + 1:N 5 + survey_answers 키 변경 + V1 invitation 폐기)
+3. 각 단계가 "Success. No rows returned" 메시지로 끝나는지 확인.
 
 ### 1.3 키 / URL 복사
 
@@ -111,9 +114,10 @@ npm install
 npm run dev
 ```
 
-`http://localhost:3000/login` → "Google 계정으로 로그인" → 운영자 Gmail로 진입.
+- 운영자: `http://localhost:3000/login` → "Google 계정으로 로그인" → 화이트리스트 Gmail 진입 → `/` 대시보드.
+- 가입자: `http://localhost:3000/signup` → "Google 로 가입하기" → 화이트리스트 외 Gmail → `/onboarding/profile` (Step 1 진행).
 
-다른 Gmail로 로그인을 시도하면 즉시 차단되어 로그인 페이지로 리디렉트되는지 확인.
+운영자 / 가입자 분기는 `OPERATOR_EMAIL` 화이트리스트 + `friends.status` 매트릭스에 따라 `lib/auth/guard.ts` 의 `resolveGuardTarget` 가 라우팅한다 (PRD §5.5).
 
 ---
 
@@ -169,16 +173,17 @@ git push -u origin main
 
 운영자가 첫 사용 전에 해두면 좋은 것:
 
-- [ ] `/surveys/standard` 에서 챕터 1개 이상 + 문항 만들기 (없으면 발송 시 경고)
-- [ ] 친구 1~2명 등록해서 발송 → 본인이 받아 응답 → 비교 뷰 동작 확인
+- [ ] `/surveys/standard` 에서 챕터 1개 이상 + 문항 만들기 (가입자 측 `/onboarding/survey` · `/me/survey` 가 표시할 내용)
+- [ ] 본인이 별도 Gmail 로 `/signup` 진입 → Step 1 완료 → 운영자 측 `/friends/[id]` 에서 승인 → 다시 가입자 측 `/me` 진입까지 동작 확인
+- [ ] `/compare?a=&b=` 두 가입자로 진입해 이상형 양방향 매칭 색상 단서 + 표준 설문 비교 동작 확인
 
 ---
 
 ## 6. 흔한 문제
 
-### 6.1 "허용된 운영자 계정이 아닙니다" 메시지
+### 6.1 운영자 로그인이 / 대시보드 대신 /onboarding/profile 로 가는 경우
 
-`OPERATOR_EMAIL` 환경 변수와 로그인한 Gmail이 일치하는지 확인. 대소문자/공백은 자동 정규화됨.
+`OPERATOR_EMAIL` 화이트리스트에 본인 Gmail 이 포함됐는지 확인. 대소문자/공백은 자동 정규화됨. 미통과 시 가드가 가입자 흐름으로 라우팅한다.
 
 ### 6.2 OAuth callback 실패
 
@@ -186,9 +191,9 @@ Supabase / Google 양쪽의 redirect URI가 정확히 일치하는지 확인:
 - Google Console: `https://<supabase-ref>.supabase.co/auth/v1/callback`
 - Supabase URL Configuration: `https://<vercel-domain>/auth/callback`
 
-### 6.3 친구가 링크 들어갔는데 500 에러
+### 6.3 가입자 페이지 500 에러
 
-`SUPABASE_SECRET_KEY` (또는 레거시 `SUPABASE_SERVICE_ROLE_KEY`)가 누락되면 친구 측 페이지가 토큰을 검증 못 함. Vercel 환경 변수 확인.
+`SUPABASE_SECRET_KEY` (또는 레거시 `SUPABASE_SERVICE_ROLE_KEY`) 가 누락되면 서버가 친구 row 를 service-role 로 조회 못 함. Vercel 환경 변수 확인.
 
 ### 6.4 빌드 시 "Module not found" 또는 type 에러
 

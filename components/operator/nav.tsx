@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
+// V2: PRD §5.4 — /surveys / /matches nav 항목 폐기.
+// 표준 설문 편집은 대시보드 "빠른 진입" 또는 /settings 에서 진입.
+// 매칭 이력은 /friends/[id] · /compare 에서 직접 확인.
 const links = [
   { href: "/", label: "대시보드" },
-  { href: "/friends", label: "친구" },
-  { href: "/surveys", label: "설문" },
-  { href: "/matches", label: "매칭 이력" },
+  { href: "/friends", label: "가입자" },
 ];
 
 export function OperatorNav({ displayName }: { displayName: string }) {

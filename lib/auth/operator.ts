@@ -22,7 +22,7 @@ export const OPERATOR_DISPLAY_NAME =
  * because the site is single-tenant by design (multi-tenant SaaS is
  * explicitly out of V1 scope).
  */
-const SITE_OWNER_ID = "11111111-1111-1111-1111-111111111111";
+export const SITE_OWNER_ID = "11111111-1111-1111-1111-111111111111";
 
 export type OperatorSession = {
   /** Site-wide owner_id, identical across all operators. */
