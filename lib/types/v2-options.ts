@@ -12,6 +12,12 @@
  * `lib/types/domain.ts` 가 single source. 여기서는 재export 하지 않고,
  * 사용처에서 `domain.ts` 에서 가져온다.
  */
+import type {
+  SmokingSelf,
+  DrinkingSelf,
+  MarriageViewSelf,
+  TattooSelf,
+} from "@/lib/types/domain";
 // ─────────────────────────────────────────────────────────────
 // §1 선호 조건 (구조화 8개 항목) — friend_ideals 1:1 + 다중선택 1:N
 // ─────────────────────────────────────────────────────────────
@@ -194,14 +200,8 @@ export const getJobLabel = makeLabelGetter(JOB_LABEL);
 // 이상형 enum 사전 (SMOKING_LABEL 등) 은 "any/non_smoker_only" 등
 // "이상형 측 표현". 본인 프로필 enum 사전은 "non_smoker/occasional/regular"
 // 등 "자기 상태". 의미 분리 명확히 위해 별 사전 + helper.
+// (도메인 타입 import 는 파일 상단에 모음.)
 // ─────────────────────────────────────────────────────────────
-
-import type {
-  SmokingSelf,
-  DrinkingSelf,
-  MarriageViewSelf,
-  TattooSelf,
-} from "@/lib/types/domain";
 
 /** 본인 흡연 사전 — 자기 상태. 이상형 SMOKING_LABEL 과 분리. */
 export const SELF_SMOKING_LABEL: Record<SmokingSelf, string> = {
