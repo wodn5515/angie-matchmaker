@@ -12,7 +12,14 @@ import {
   RELATIONSHIP_STATUS_LABEL,
   MATCH_INTEREST_LABEL,
 } from "@/lib/types/domain";
-import { REGION_OPTIONS, JOB_OPTIONS } from "@/lib/types/v2-options";
+import {
+  REGION_OPTIONS,
+  JOB_OPTIONS,
+  SELF_SMOKING_OPTIONS,
+  SELF_DRINKING_OPTIONS,
+  SELF_MARRIAGE_VIEW_OPTIONS,
+  SELF_TATTOO_OPTIONS,
+} from "@/lib/types/v2-options";
 
 /**
  * V2 운영자 가입자 정보 수정 폼.
@@ -244,6 +251,75 @@ export function FriendForm({
               ).map((k) => (
                 <option key={k} value={k}>
                   {MATCH_INTEREST_LABEL[k]}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* 자기 보고 4 항목 (009) — 이상형 매칭 대칭. 운영자가 가입자 대신 보강 입력 가능 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>라이프스타일</CardTitle>
+        </CardHeader>
+        <CardBody className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label htmlFor="smoking">흡연</Label>
+            <Select
+              id="smoking"
+              name="smoking"
+              defaultValue={initial?.smoking ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {SELF_SMOKING_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="drinking">음주</Label>
+            <Select
+              id="drinking"
+              name="drinking"
+              defaultValue={initial?.drinking ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {SELF_DRINKING_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="marriage_view">결혼관</Label>
+            <Select
+              id="marriage_view"
+              name="marriage_view"
+              defaultValue={initial?.marriage_view ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {SELF_MARRIAGE_VIEW_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="tattoo">문신</Label>
+            <Select
+              id="tattoo"
+              name="tattoo"
+              defaultValue={initial?.tattoo ?? ""}
+            >
+              <option value="">선택 안 함</option>
+              {SELF_TATTOO_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
                 </option>
               ))}
             </Select>

@@ -10,6 +10,10 @@ import {
   getRegionLabel,
   getHometownLabel,
   getJobLabel,
+  getSmokingLabel,
+  getDrinkingLabel,
+  getMarriageViewLabel,
+  getTattooLabel,
 } from "@/lib/types/v2-options";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -141,6 +145,35 @@ function buildRows(a: Friend, b: Friend): Row[] {
       "매칭 관심도",
       a.match_interest ? MATCH_INTEREST_LABEL[a.match_interest] : null,
       b.match_interest ? MATCH_INTEREST_LABEL[b.match_interest] : null,
+    ),
+  );
+  // 자기 보고 4 항목 (009) — 같음/다름 색상 단서.
+  rows.push(
+    text(
+      "흡연",
+      a.smoking ? getSmokingLabel(a.smoking) : null,
+      b.smoking ? getSmokingLabel(b.smoking) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "음주",
+      a.drinking ? getDrinkingLabel(a.drinking) : null,
+      b.drinking ? getDrinkingLabel(b.drinking) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "결혼관",
+      a.marriage_view ? getMarriageViewLabel(a.marriage_view) : null,
+      b.marriage_view ? getMarriageViewLabel(b.marriage_view) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "문신",
+      a.tattoo ? getTattooLabel(a.tattoo) : null,
+      b.tattoo ? getTattooLabel(b.tattoo) : null,
     ),
   );
   rows.push(text("추천인", a.recommender_name, b.recommender_name));

@@ -23,6 +23,10 @@ import {
   getRegionLabel,
   getHometownLabel,
   getJobLabel,
+  getSmokingLabel,
+  getDrinkingLabel,
+  getMarriageViewLabel,
+  getTattooLabel,
 } from "@/lib/types/v2-options";
 import { AnswerView } from "@/components/operator/answer-display";
 import { FriendIdealSection } from "@/components/operator/friend-ideal-section";
@@ -189,6 +193,27 @@ export default async function FriendDetailPage({
                   ? `${friend.recommender_name} (${friend.recommender_relation || "—"})`
                   : "—"
               }
+            />
+            {/* 자기 보고 4 항목 (009) — 이상형 매칭에 사용. 값 없으면 "—" */}
+            <Field
+              label="흡연"
+              value={friend.smoking ? getSmokingLabel(friend.smoking) : "—"}
+            />
+            <Field
+              label="음주"
+              value={friend.drinking ? getDrinkingLabel(friend.drinking) : "—"}
+            />
+            <Field
+              label="결혼관"
+              value={
+                friend.marriage_view
+                  ? getMarriageViewLabel(friend.marriage_view)
+                  : "—"
+              }
+            />
+            <Field
+              label="문신"
+              value={friend.tattoo ? getTattooLabel(friend.tattoo) : "—"}
             />
             <div className="sm:col-span-2 flex flex-wrap gap-1.5">
               {(friend.tags ?? []).map((t) => (
