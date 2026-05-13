@@ -8,8 +8,6 @@ import {
   type FriendIdealAggregate,
 } from "@/lib/db/ideals";
 import {
-  REGION_LABEL,
-  JOB_LABEL,
   SMOKING_LABEL,
   DRINKING_LABEL,
   MARRIAGE_TIMING_LABEL,
@@ -105,7 +103,7 @@ function Direction({
     idealText:
       ideals.regions.length === 0
         ? "상관없음"
-        : ideals.regions.map((r) => REGION_LABEL[r] ?? r).join(", "),
+        : ideals.regions.map((r) => getRegionLabel(r)).join(", "),
     actualText: target.region ? getRegionLabel(target.region) : "—",
     tone: compareIdealValues({
       ideal: ideals.regions,
@@ -120,7 +118,7 @@ function Direction({
     idealText:
       ideals.hometowns.length === 0
         ? "상관없음"
-        : ideals.hometowns.map((r) => REGION_LABEL[r] ?? r).join(", "),
+        : ideals.hometowns.map((r) => getHometownLabel(r)).join(", "),
     actualText: target.hometown ? getHometownLabel(target.hometown) : "—",
     tone: compareIdealValues({
       ideal: ideals.hometowns,
@@ -177,7 +175,7 @@ function Direction({
     idealText:
       ideals.jobs.length === 0
         ? "상관없음"
-        : ideals.jobs.map((j) => JOB_LABEL[j] ?? j).join(", "),
+        : ideals.jobs.map((j) => getJobLabel(j)).join(", "),
     actualText: target.occupation ? getJobLabel(target.occupation) : "—",
     tone: compareIdealValues({
       ideal: ideals.jobs,
