@@ -10,9 +10,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  * 운영자(`OPERATOR_EMAIL` 화이트리스트 통과 계정) 세션은 여기서 다루지 않는다.
  * 운영자는 `lib/auth/operator.ts` 의 `requireOperator()` 를 쓴다.
  *
- * decisions/007 §D8 — `getCurrentUser` 와 `ensureNotOperator` 두 함수가 같은
- * `supabase.auth.getUser` 호출을 따로 하던 중복을 `fetchAuthAndOperatorStatus`
- * 내부 헬퍼로 묶었다. 외부 시그니처는 그대로 유지.
+ * decisions/007 §D8 — `getCurrentUser` 와 `ensureNotOperator` 가 각자 따로 하던
+ * `supabase.auth.getUser` 호출 코드 경로를 `fetchAuthAndOperatorStatus` 한 헬퍼로
+ * 통일했다. 외부 시그니처 그대로 유지. 실 RTT dedup 은 후속 request-scope 캐시
+ * (React `cache()` 또는 동등 메커니즘) 단계에서.
  */
 
 export type UserSession = {
