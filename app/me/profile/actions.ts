@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
-import { requireApprovedUser, ensureNotOperator } from "@/lib/auth/user";
+import { requireOnboardedUser, ensureNotOperator } from "@/lib/auth/user";
 import { ProfileSchema } from "@/lib/validation/profile";
 
 /**
@@ -22,7 +22,7 @@ const MeProfileSchema = ProfileSchema.omit({
 
 export async function updateMeProfileAction(formData: FormData): Promise<void> {
   await ensureNotOperator();
-  const session = await requireApprovedUser();
+  const session = await requireOnboardedUser();
   const parsed = MeProfileSchema.parse(Object.fromEntries(formData.entries()));
 
   const service = createSupabaseServiceClient();

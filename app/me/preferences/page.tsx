@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { UserShell } from "@/components/user/user-shell";
 import { PreferencesForm } from "@/app/onboarding/preferences/preferences-form";
-import { requireApprovedUser } from "@/lib/auth/user";
+import { requireOnboardedUser } from "@/lib/auth/user";
 import { getFriendIdealAggregate } from "@/lib/db/ideals";
 import { updateMePreferencesAction } from "./actions";
 
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * 폼은 온보딩 Step 2 의 `PreferencesForm` 을 variant="edit" 으로 재사용.
  */
 export default async function MePreferencesPage() {
-  const session = await requireApprovedUser();
+  const session = await requireOnboardedUser();
   const ideals = await getFriendIdealAggregate(session.friendId);
   const defaults = {
     age_from: ideals.ideals?.age_from ?? undefined,

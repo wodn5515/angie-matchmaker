@@ -1,7 +1,7 @@
 import { UserShell } from "@/components/user/user-shell";
 import { StatusBanner } from "@/components/user/status-banner";
 import { MeSectionCard } from "@/components/user/me-section-card";
-import { requireApprovedUser } from "@/lib/auth/user";
+import { requireOnboardedUser } from "@/lib/auth/user";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getFriendIdealAggregate } from "@/lib/db/ideals";
 import { ensureStandardSurvey, listQuestionsBySurvey } from "@/lib/db/surveys";
@@ -14,10 +14,12 @@ export const dynamic = "force-dynamic";
  * V2 가입자 대시보드.
  * PRD §3.3.1 + §6.3 — 본인 정보 요약 + 분기 카드 3개.
  *
- * proxy 가드가 status='approved' 가입자만 진입시킨다. 운영자/pending/rejected 분기 X.
+ * proxy 가드 + `requireOnboardedUser` 가 status='approved' 또는
+ * (status='pending' + onboarding_step=null) 가입자만 진입시킨다 (011 §D1·D2).
+ * pending 가입자에게는 상단 배너로 심사 대기 안내 (011 §D4).
  */
 export default async function MePage() {
-  const user = await requireApprovedUser();
+  const user = await requireOnboardedUser();
 
   const service = createSupabaseServiceClient();
   const { data: friend } = await service
@@ -76,12 +78,21 @@ export default async function MePage() {
               안녕하세요, <span className="text-pink-400">{userName}</span>님 🩷
             </h1>
           </div>
-          <StatusBanner
-            tone="approved"
-            icon="✅"
-            title="승인됨 — 매칭 풀에 합류했어요"
-            description="운영자가 잘 어울리는 분을 찾으면 직접 안내드려요."
-          />
+          {user.status === "pending" ? (
+            <StatusBanner
+              tone="pending"
+              icon="🔍"
+              title="심사 대기 중이에요"
+              description="미리 채워두면 운영자가 더 빨리 검토해요. 결과가 나오면 직접 안내드릴게요."
+            />
+          ) : (
+            <StatusBanner
+              tone="approved"
+              icon="✅"
+              title="승인됨 — 매칭 풀에 합류했어요"
+              description="운영자가 잘 어울리는 분을 찾으면 직접 안내드려요."
+            />
+          )}
         </header>
 
         <div className="space-y-3">

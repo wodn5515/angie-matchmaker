@@ -125,8 +125,9 @@ export function resolveGuardTarget(input: GuardInput): GuardTarget {
         resolveOnboardingResumeTarget({ friend }) ?? "/pending";
       return { type: "redirect", to: resumeTarget };
     }
-    // 온보딩 완료 + 심사 대기
+    // 온보딩 완료 + 심사 대기 — 011 §D1 — /me/* 진입을 허용해 안내 ↔ 동작 mismatch 해소.
     if (isPathOrPrefix(pathname, PENDING_PREFIX)) return { type: "pass" };
+    if (isPathOrPrefix(pathname, ME_PREFIX)) return { type: "pass" };
     return { type: "redirect", to: "/pending" };
   }
 
