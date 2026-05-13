@@ -167,6 +167,28 @@ export const MARRIAGE_TIMING_LABEL = toLookup(MARRIAGE_TIMING_OPTIONS);
 export const TATTOO_LABEL = toLookup(TATTOO_OPTIONS);
 
 // ─────────────────────────────────────────────────────────────
+// 라벨 변환 helper — null/undefined/빈 → "", 매핑 미스 → raw value
+// 008 §D3·D4 — 가입자 리스트/디테일 사이 정합성 (사용자 보고 "한글로 보이게").
+// 페이지 본체는 이 helper 만 호출 (lookup 객체 직접 노출 ❌).
+// ─────────────────────────────────────────────────────────────
+
+function makeLabelGetter(lookup: Record<string, string>) {
+  return function getLabel(value: string | null | undefined): string {
+    if (value == null || value === "") return "";
+    return lookup[value] ?? value;
+  };
+}
+
+/** region 코드 → 한글 라벨 (광역시도 17개). 예: "gyeonggi" → "경기". */
+export const getRegionLabel = makeLabelGetter(REGION_LABEL);
+
+/** 출신지역 코드 → 한글 라벨. hometown 도 region 사전을 공유한다 (광역시도 17개). */
+export const getHometownLabel = makeLabelGetter(REGION_LABEL);
+
+/** 직업군 코드 → 한글 라벨. 예: "it_dev" → "IT·개발". */
+export const getJobLabel = makeLabelGetter(JOB_LABEL);
+
+// ─────────────────────────────────────────────────────────────
 // 출생연도 범위 (선호 나이대 RangeSlider 의 기본 범위)
 // ─────────────────────────────────────────────────────────────
 
