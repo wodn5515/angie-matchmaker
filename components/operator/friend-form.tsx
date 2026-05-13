@@ -14,11 +14,13 @@ import {
 } from "@/lib/types/domain";
 import {
   REGION_OPTIONS,
+  REGION_DETAIL_OPTIONS,
   JOB_OPTIONS,
   SELF_SMOKING_OPTIONS,
   SELF_DRINKING_OPTIONS,
   SELF_MARRIAGE_VIEW_OPTIONS,
   SELF_TATTOO_OPTIONS,
+  type RegionCode,
 } from "@/lib/types/v2-options";
 
 /**
@@ -45,6 +47,22 @@ export function FriendForm({
   const router = useRouter();
 
   const tagsCsv = (initial?.tags ?? []).join(", ");
+
+  // 012 §D5 — region cascade (운영자 측 friend-form 도 같은 패턴).
+  const [region, setRegion] = useState<string>(initial?.region ?? "");
+  const [regionDetail, setRegionDetail] = useState<string>(
+    (initial as { region_detail?: string | null })?.region_detail ?? "",
+  );
+  const [hometown, setHometown] = useState<string>(initial?.hometown ?? "");
+  const [hometownDetail, setHometownDetail] = useState<string>(
+    (initial as { hometown_detail?: string | null })?.hometown_detail ?? "",
+  );
+  const regionDetails = region
+    ? REGION_DETAIL_OPTIONS[region as RegionCode] ?? []
+    : [];
+  const hometownDetails = hometown
+    ? REGION_DETAIL_OPTIONS[hometown as RegionCode] ?? []
+    : [];
 
   const onSubmit = (formData: FormData) => {
     setError(null);
@@ -168,7 +186,11 @@ export function FriendForm({
             <Select
               id="region"
               name="region"
-              defaultValue={initial?.region ?? ""}
+              value={region}
+              onChange={(e) => {
+                setRegion(e.target.value);
+                setRegionDetail("");
+              }}
             >
               <option value="">선택 안 함</option>
               {REGION_OPTIONS.map((o) => (
@@ -178,12 +200,34 @@ export function FriendForm({
               ))}
             </Select>
           </div>
+          {regionDetails.length > 0 ? (
+            <div>
+              <Label htmlFor="region_detail">거주 세부 (구·시)</Label>
+              <Select
+                id="region_detail"
+                name="region_detail"
+                value={regionDetail}
+                onChange={(e) => setRegionDetail(e.target.value)}
+              >
+                <option value="">선택 안 함</option>
+                {regionDetails.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
           <div>
             <Label htmlFor="hometown">출신 지역</Label>
             <Select
               id="hometown"
               name="hometown"
-              defaultValue={initial?.hometown ?? ""}
+              value={hometown}
+              onChange={(e) => {
+                setHometown(e.target.value);
+                setHometownDetail("");
+              }}
             >
               <option value="">선택 안 함</option>
               {REGION_OPTIONS.map((o) => (
@@ -193,6 +237,24 @@ export function FriendForm({
               ))}
             </Select>
           </div>
+          {hometownDetails.length > 0 ? (
+            <div>
+              <Label htmlFor="hometown_detail">출신 세부 (구·시)</Label>
+              <Select
+                id="hometown_detail"
+                name="hometown_detail"
+                value={hometownDetail}
+                onChange={(e) => setHometownDetail(e.target.value)}
+              >
+                <option value="">선택 안 함</option>
+                {hometownDetails.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
           <div>
             <Label htmlFor="occupation">직업</Label>
             <Select

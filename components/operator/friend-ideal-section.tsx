@@ -7,8 +7,8 @@ import {
   DRINKING_LABEL,
   MARRIAGE_TIMING_LABEL,
   TATTOO_LABEL,
-  getRegionLabel,
-  getHometownLabel,
+  getRegionFullLabel,
+  getHometownFullLabel,
   getJobLabel,
 } from "@/lib/types/v2-options";
 
@@ -23,8 +23,9 @@ export type FriendIdealSummary = {
   // §1
   age_from: number | null;
   age_to: number | null;
-  regions: string[]; // RegionCode 값들
-  hometowns: string[];
+  /** 012 — 광역+detail 객체 배열. detail '' = 광역 전체. */
+  regions: Array<{ region: string; region_detail: string }>;
+  hometowns: Array<{ hometown: string; hometown_detail: string }>;
   hometown_same_bonus: boolean;
   smoking: string | null;
   drinking: string | null;
@@ -72,7 +73,13 @@ export function FriendIdealSection({
             value={
               ideal.regions.length === 0
                 ? "상관없음"
-                : ideal.regions.map((r) => getRegionLabel(r)).join(", ")
+                : ideal.regions
+                    .map((r) =>
+                      r.region_detail
+                        ? getRegionFullLabel(r.region, r.region_detail)
+                        : `${getRegionFullLabel(r.region, "")} 전체`,
+                    )
+                    .join(", ")
             }
           />
           <Row
@@ -80,7 +87,13 @@ export function FriendIdealSection({
             value={
               ideal.hometowns.length === 0
                 ? "상관없음"
-                : `${ideal.hometowns.map((r) => getHometownLabel(r)).join(", ")}${ideal.hometown_same_bonus ? " · 같은 출신 가산" : ""}`
+                : `${ideal.hometowns
+                    .map((r) =>
+                      r.hometown_detail
+                        ? getHometownFullLabel(r.hometown, r.hometown_detail)
+                        : `${getHometownFullLabel(r.hometown, "")} 전체`,
+                    )
+                    .join(", ")}${ideal.hometown_same_bonus ? " · 같은 출신 가산" : ""}`
             }
           />
           <Row

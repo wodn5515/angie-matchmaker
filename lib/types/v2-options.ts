@@ -71,6 +71,323 @@ export const REGION_OPTIONS = [
 ] as const;
 export type RegionCode = (typeof REGION_OPTIONS)[number]["value"];
 
+// ─────────────────────────────────────────────────────────────
+// 광역시·도 detail 사전 (012 §D3 — 2단계 세분화).
+//
+// - 광역시 7개 (서울/부산/인천/대구/대전/광주/울산) → 자치구·군 단위
+// - 도 9개 (경기/강원/충북/충남/전북/전남/경북/경남/제주) → 시·군 단위
+//   - 제주특별자치도는 시 단위 (제주시 / 서귀포시)
+// - 세종특별자치시는 세분화 없음 (빈 배열)
+//
+// 슬러그 컨벤션 (012 결정 로그 §D3 + TDD 게이트):
+//   ^[a-z0-9]+(?:-[a-z0-9]+)*$ — 영어 lowercase + '-' + 단위 접미사 (gu/si/gun).
+//   동음·이형 충돌은 광역 그룹 안에서만 고려 (다른 region 의 같은 슬러그 OK).
+//   행정안전부 시군구 목록 기준 (2026-05).
+// ─────────────────────────────────────────────────────────────
+
+/** region+detail 결합 값 — 이상형 다중 선호 / 본인 cascade 모두 공유. */
+export type RegionDetailValue = { region: string; detail: string };
+
+export const REGION_DETAIL_OPTIONS: Record<
+  RegionCode,
+  ReadonlyArray<{ value: string; label: string }>
+> = {
+  // 서울특별시 — 25 자치구
+  seoul: [
+    { value: "jongno-gu", label: "종로구" },
+    { value: "jung-gu", label: "중구" },
+    { value: "yongsan-gu", label: "용산구" },
+    { value: "seongdong-gu", label: "성동구" },
+    { value: "gwangjin-gu", label: "광진구" },
+    { value: "dongdaemun-gu", label: "동대문구" },
+    { value: "jungnang-gu", label: "중랑구" },
+    { value: "seongbuk-gu", label: "성북구" },
+    { value: "gangbuk-gu", label: "강북구" },
+    { value: "dobong-gu", label: "도봉구" },
+    { value: "nowon-gu", label: "노원구" },
+    { value: "eunpyeong-gu", label: "은평구" },
+    { value: "seodaemun-gu", label: "서대문구" },
+    { value: "mapo-gu", label: "마포구" },
+    { value: "yangcheon-gu", label: "양천구" },
+    { value: "gangseo-gu", label: "강서구" },
+    { value: "guro-gu", label: "구로구" },
+    { value: "geumcheon-gu", label: "금천구" },
+    { value: "yeongdeungpo-gu", label: "영등포구" },
+    { value: "dongjak-gu", label: "동작구" },
+    { value: "gwanak-gu", label: "관악구" },
+    { value: "seocho-gu", label: "서초구" },
+    { value: "gangnam-gu", label: "강남구" },
+    { value: "songpa-gu", label: "송파구" },
+    { value: "gangdong-gu", label: "강동구" },
+  ],
+
+  // 부산광역시 — 15 자치구 + 1 군
+  busan: [
+    { value: "jung-gu", label: "중구" },
+    { value: "seo-gu", label: "서구" },
+    { value: "dong-gu", label: "동구" },
+    { value: "yeongdo-gu", label: "영도구" },
+    { value: "busanjin-gu", label: "부산진구" },
+    { value: "dongnae-gu", label: "동래구" },
+    { value: "nam-gu", label: "남구" },
+    { value: "buk-gu", label: "북구" },
+    { value: "haeundae-gu", label: "해운대구" },
+    { value: "saha-gu", label: "사하구" },
+    { value: "geumjeong-gu", label: "금정구" },
+    { value: "gangseo-gu", label: "강서구" },
+    { value: "yeonje-gu", label: "연제구" },
+    { value: "suyeong-gu", label: "수영구" },
+    { value: "sasang-gu", label: "사상구" },
+    { value: "gijang-gun", label: "기장군" },
+  ],
+
+  // 인천광역시 — 8 자치구 + 2 군
+  incheon: [
+    { value: "jung-gu", label: "중구" },
+    { value: "dong-gu", label: "동구" },
+    { value: "michuhol-gu", label: "미추홀구" },
+    { value: "yeonsu-gu", label: "연수구" },
+    { value: "namdong-gu", label: "남동구" },
+    { value: "bupyeong-gu", label: "부평구" },
+    { value: "gyeyang-gu", label: "계양구" },
+    { value: "seo-gu", label: "서구" },
+    { value: "ganghwa-gun", label: "강화군" },
+    { value: "ongjin-gun", label: "옹진군" },
+  ],
+
+  // 대구광역시 — 7 자치구 + 2 군 (군위군 2023년 편입)
+  daegu: [
+    { value: "jung-gu", label: "중구" },
+    { value: "dong-gu", label: "동구" },
+    { value: "seo-gu", label: "서구" },
+    { value: "nam-gu", label: "남구" },
+    { value: "buk-gu", label: "북구" },
+    { value: "suseong-gu", label: "수성구" },
+    { value: "dalseo-gu", label: "달서구" },
+    { value: "dalseong-gun", label: "달성군" },
+    { value: "gunwi-gun", label: "군위군" },
+  ],
+
+  // 대전광역시 — 5 자치구
+  daejeon: [
+    { value: "dong-gu", label: "동구" },
+    { value: "jung-gu", label: "중구" },
+    { value: "seo-gu", label: "서구" },
+    { value: "yuseong-gu", label: "유성구" },
+    { value: "daedeok-gu", label: "대덕구" },
+  ],
+
+  // 광주광역시 — 5 자치구
+  gwangju: [
+    { value: "dong-gu", label: "동구" },
+    { value: "seo-gu", label: "서구" },
+    { value: "nam-gu", label: "남구" },
+    { value: "buk-gu", label: "북구" },
+    { value: "gwangsan-gu", label: "광산구" },
+  ],
+
+  // 울산광역시 — 4 자치구 + 1 군
+  ulsan: [
+    { value: "jung-gu", label: "중구" },
+    { value: "nam-gu", label: "남구" },
+    { value: "dong-gu", label: "동구" },
+    { value: "buk-gu", label: "북구" },
+    { value: "ulju-gun", label: "울주군" },
+  ],
+
+  // 세종특별자치시 — 세분화 없음
+  sejong: [],
+
+  // 경기도 — 28 시 + 3 군
+  gyeonggi: [
+    { value: "suwon-si", label: "수원시" },
+    { value: "seongnam-si", label: "성남시" },
+    { value: "uijeongbu-si", label: "의정부시" },
+    { value: "anyang-si", label: "안양시" },
+    { value: "bucheon-si", label: "부천시" },
+    { value: "gwangmyeong-si", label: "광명시" },
+    { value: "pyeongtaek-si", label: "평택시" },
+    { value: "dongducheon-si", label: "동두천시" },
+    { value: "ansan-si", label: "안산시" },
+    { value: "goyang-si", label: "고양시" },
+    { value: "gwacheon-si", label: "과천시" },
+    { value: "guri-si", label: "구리시" },
+    { value: "namyangju-si", label: "남양주시" },
+    { value: "osan-si", label: "오산시" },
+    { value: "siheung-si", label: "시흥시" },
+    { value: "gunpo-si", label: "군포시" },
+    { value: "uiwang-si", label: "의왕시" },
+    { value: "hanam-si", label: "하남시" },
+    { value: "yongin-si", label: "용인시" },
+    { value: "paju-si", label: "파주시" },
+    { value: "icheon-si", label: "이천시" },
+    { value: "anseong-si", label: "안성시" },
+    { value: "gimpo-si", label: "김포시" },
+    { value: "hwaseong-si", label: "화성시" },
+    { value: "gwangju-si", label: "광주시" },
+    { value: "yangju-si", label: "양주시" },
+    { value: "pocheon-si", label: "포천시" },
+    { value: "yeoju-si", label: "여주시" },
+    { value: "yeoncheon-gun", label: "연천군" },
+    { value: "gapyeong-gun", label: "가평군" },
+    { value: "yangpyeong-gun", label: "양평군" },
+  ],
+
+  // 강원특별자치도 — 7 시 + 11 군
+  gangwon: [
+    { value: "chuncheon-si", label: "춘천시" },
+    { value: "wonju-si", label: "원주시" },
+    { value: "gangneung-si", label: "강릉시" },
+    { value: "donghae-si", label: "동해시" },
+    { value: "taebaek-si", label: "태백시" },
+    { value: "sokcho-si", label: "속초시" },
+    { value: "samcheok-si", label: "삼척시" },
+    { value: "hongcheon-gun", label: "홍천군" },
+    { value: "hoengseong-gun", label: "횡성군" },
+    { value: "yeongwol-gun", label: "영월군" },
+    { value: "pyeongchang-gun", label: "평창군" },
+    { value: "jeongseon-gun", label: "정선군" },
+    { value: "cheorwon-gun", label: "철원군" },
+    { value: "hwacheon-gun", label: "화천군" },
+    { value: "yanggu-gun", label: "양구군" },
+    { value: "inje-gun", label: "인제군" },
+    { value: "goseong-gun", label: "고성군" },
+    { value: "yangyang-gun", label: "양양군" },
+  ],
+
+  // 충청북도 — 3 시 + 8 군
+  chungbuk: [
+    { value: "cheongju-si", label: "청주시" },
+    { value: "chungju-si", label: "충주시" },
+    { value: "jecheon-si", label: "제천시" },
+    { value: "boeun-gun", label: "보은군" },
+    { value: "okcheon-gun", label: "옥천군" },
+    { value: "yeongdong-gun", label: "영동군" },
+    { value: "jincheon-gun", label: "진천군" },
+    { value: "goesan-gun", label: "괴산군" },
+    { value: "eumseong-gun", label: "음성군" },
+    { value: "danyang-gun", label: "단양군" },
+    { value: "jeungpyeong-gun", label: "증평군" },
+  ],
+
+  // 충청남도 — 8 시 + 7 군
+  chungnam: [
+    { value: "cheonan-si", label: "천안시" },
+    { value: "gongju-si", label: "공주시" },
+    { value: "boryeong-si", label: "보령시" },
+    { value: "asan-si", label: "아산시" },
+    { value: "seosan-si", label: "서산시" },
+    { value: "nonsan-si", label: "논산시" },
+    { value: "gyeryong-si", label: "계룡시" },
+    { value: "dangjin-si", label: "당진시" },
+    { value: "geumsan-gun", label: "금산군" },
+    { value: "buyeo-gun", label: "부여군" },
+    { value: "seocheon-gun", label: "서천군" },
+    { value: "cheongyang-gun", label: "청양군" },
+    { value: "hongseong-gun", label: "홍성군" },
+    { value: "yesan-gun", label: "예산군" },
+    { value: "taean-gun", label: "태안군" },
+  ],
+
+  // 전북특별자치도 — 6 시 + 8 군
+  jeonbuk: [
+    { value: "jeonju-si", label: "전주시" },
+    { value: "gunsan-si", label: "군산시" },
+    { value: "iksan-si", label: "익산시" },
+    { value: "jeongeup-si", label: "정읍시" },
+    { value: "namwon-si", label: "남원시" },
+    { value: "gimje-si", label: "김제시" },
+    { value: "wanju-gun", label: "완주군" },
+    { value: "jinan-gun", label: "진안군" },
+    { value: "muju-gun", label: "무주군" },
+    { value: "jangsu-gun", label: "장수군" },
+    { value: "imsil-gun", label: "임실군" },
+    { value: "sunchang-gun", label: "순창군" },
+    { value: "gochang-gun", label: "고창군" },
+    { value: "buan-gun", label: "부안군" },
+  ],
+
+  // 전라남도 — 5 시 + 17 군
+  jeonnam: [
+    { value: "mokpo-si", label: "목포시" },
+    { value: "yeosu-si", label: "여수시" },
+    { value: "suncheon-si", label: "순천시" },
+    { value: "naju-si", label: "나주시" },
+    { value: "gwangyang-si", label: "광양시" },
+    { value: "damyang-gun", label: "담양군" },
+    { value: "gokseong-gun", label: "곡성군" },
+    { value: "gurye-gun", label: "구례군" },
+    { value: "goheung-gun", label: "고흥군" },
+    { value: "boseong-gun", label: "보성군" },
+    { value: "hwasun-gun", label: "화순군" },
+    { value: "jangheung-gun", label: "장흥군" },
+    { value: "gangjin-gun", label: "강진군" },
+    { value: "haenam-gun", label: "해남군" },
+    { value: "yeongam-gun", label: "영암군" },
+    { value: "muan-gun", label: "무안군" },
+    { value: "hampyeong-gun", label: "함평군" },
+    { value: "yeonggwang-gun", label: "영광군" },
+    { value: "jangseong-gun", label: "장성군" },
+    { value: "wando-gun", label: "완도군" },
+    { value: "jindo-gun", label: "진도군" },
+    { value: "sinan-gun", label: "신안군" },
+  ],
+
+  // 경상북도 — 10 시 + 12 군
+  gyeongbuk: [
+    { value: "pohang-si", label: "포항시" },
+    { value: "gyeongju-si", label: "경주시" },
+    { value: "gimcheon-si", label: "김천시" },
+    { value: "andong-si", label: "안동시" },
+    { value: "gumi-si", label: "구미시" },
+    { value: "yeongju-si", label: "영주시" },
+    { value: "yeongcheon-si", label: "영천시" },
+    { value: "sangju-si", label: "상주시" },
+    { value: "mungyeong-si", label: "문경시" },
+    { value: "gyeongsan-si", label: "경산시" },
+    { value: "uiseong-gun", label: "의성군" },
+    { value: "cheongsong-gun", label: "청송군" },
+    { value: "yeongyang-gun", label: "영양군" },
+    { value: "yeongdeok-gun", label: "영덕군" },
+    { value: "cheongdo-gun", label: "청도군" },
+    { value: "goryeong-gun", label: "고령군" },
+    { value: "seongju-gun", label: "성주군" },
+    { value: "chilgok-gun", label: "칠곡군" },
+    { value: "yecheon-gun", label: "예천군" },
+    { value: "bonghwa-gun", label: "봉화군" },
+    { value: "uljin-gun", label: "울진군" },
+    { value: "ulleung-gun", label: "울릉군" },
+  ],
+
+  // 경상남도 — 8 시 + 10 군
+  gyeongnam: [
+    { value: "changwon-si", label: "창원시" },
+    { value: "jinju-si", label: "진주시" },
+    { value: "tongyeong-si", label: "통영시" },
+    { value: "sacheon-si", label: "사천시" },
+    { value: "gimhae-si", label: "김해시" },
+    { value: "miryang-si", label: "밀양시" },
+    { value: "geoje-si", label: "거제시" },
+    { value: "yangsan-si", label: "양산시" },
+    { value: "uiryeong-gun", label: "의령군" },
+    { value: "haman-gun", label: "함안군" },
+    { value: "changnyeong-gun", label: "창녕군" },
+    { value: "goseong-gun", label: "고성군" },
+    { value: "namhae-gun", label: "남해군" },
+    { value: "hadong-gun", label: "하동군" },
+    { value: "sancheong-gun", label: "산청군" },
+    { value: "hamyang-gun", label: "함양군" },
+    { value: "geochang-gun", label: "거창군" },
+    { value: "hapcheon-gun", label: "합천군" },
+  ],
+
+  // 제주특별자치도 — 2 시
+  jeju: [
+    { value: "jeju-si", label: "제주시" },
+    { value: "seogwipo-si", label: "서귀포시" },
+  ],
+};
+
 /** 직업 대분류 — 다중 선택 */
 export const JOB_OPTIONS = [
   { value: "office", label: "사무직" },
@@ -193,6 +510,32 @@ export const getHometownLabel = makeLabelGetter(REGION_LABEL);
 
 /** 직업군 코드 → 한글 라벨. 예: "it_dev" → "IT·개발". */
 export const getJobLabel = makeLabelGetter(JOB_LABEL);
+
+/**
+ * region + detail 결합 한글 라벨 — 012 §D6.
+ *
+ * - region null/undefined/빈 → ""
+ * - detail null/undefined/빈 → 광역 라벨만 (예: "서울")
+ * - detail 매핑 미스 → 광역 라벨만 (raw fallback, 012 §D3 명세)
+ * - 둘 다 유효 → "서울 강남구" 처럼 결합
+ *
+ * hometown 도 같은 사전을 공유 (광역 17개 동일).
+ */
+export function getRegionFullLabel(
+  region: string | null | undefined,
+  detail: string | null | undefined,
+): string {
+  if (region == null || region === "") return "";
+  const regionLabel = REGION_LABEL[region] ?? region;
+  if (detail == null || detail === "") return regionLabel;
+  const detailEntries = REGION_DETAIL_OPTIONS[region as RegionCode];
+  if (!detailEntries) return regionLabel;
+  const found = detailEntries.find((d) => d.value === detail);
+  return found ? `${regionLabel} ${found.label}` : regionLabel;
+}
+
+/** hometown 도 region 사전을 공유한다 — 동일 helper 위임. */
+export const getHometownFullLabel = getRegionFullLabel;
 
 // ─────────────────────────────────────────────────────────────
 // 본인 프로필 4 항목 (009 — 자기 보고). 이상형 enum 셋과 분리.

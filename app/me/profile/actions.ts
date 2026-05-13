@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { requireOnboardedUser, ensureNotOperator } from "@/lib/auth/user";
-import { ProfileSchema } from "@/lib/validation/profile";
+import { ProfileObjectSchema } from "@/lib/validation/profile";
 
 /**
  * `/me/profile` — 승인된 가입자가 본인 프로필 수정.
@@ -15,10 +15,15 @@ import { ProfileSchema } from "@/lib/validation/profile";
  * server schema 도 두 필드를 omit 한 변형을 사용해 validation 실패를 피하고,
  * 클라이언트가 hidden input 으로 임의 값을 보내도 server 가 무시한다.
  */
-const MeProfileSchema = ProfileSchema.omit({
+const MeProfileSchema = ProfileObjectSchema.omit({
   recommender_name: true,
   recommender_relation: true,
-});
+}).transform((data) => ({
+  ...data,
+  // 012 §D1 CHECK 정합 — region 없이 detail 만 있는 경우 detail null 로 normalize.
+  region_detail: data.region ? data.region_detail : null,
+  hometown_detail: data.hometown ? data.hometown_detail : null,
+}));
 
 export async function updateMeProfileAction(formData: FormData): Promise<void> {
   await ensureNotOperator();

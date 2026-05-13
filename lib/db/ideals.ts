@@ -14,6 +14,68 @@ import { createSupabaseServiceClient } from "@/lib/supabase/server";
 
 export type IdealMatchKind = "same" | "partial" | "different" | "neutral";
 
+// ──────────────────────────────────────────────────────────────
+// 012 — 2단계 지역 (region + detail) 비교 함수.
+// `compareIdealValues({kind:"multi"})` 는 region 단일값 multi-select 만 처리하므로
+// 광역+detail 비교는 의미 표현이 깔끔하도록 별 함수 분리.
+// 결정 로그: docs/decisions/012-region-granularity.md §D4
+// ──────────────────────────────────────────────────────────────
+
+/** 이상형 측 region 선호 — detail 빈문자열 가능 (광역 전체 의미). */
+export type RegionPref = { region: string; detail: string };
+/** 본인 측 region — region/detail 둘 다 null 가능. */
+export type SelfRegion = { region: string | null; detail: string | null };
+
+/**
+ * 다중 (region, detail) 선호 vs 본인 거주지 매칭.
+ *
+ * 규칙 (D4):
+ *  - ideal 빈 배열 또는 self.region null → neutral
+ *  - ideal 행이 (region == self.region && detail == '') → same (광역 전체 선호)
+ *  - ideal 행이 (region == self.region && detail == self.detail) → same
+ *  - region 일치하지만 detail 다름(self.detail 다르거나 null) → partial
+ *  - 모든 ideal 행과 region 불일치 → different
+ *  - 다중 행: same > partial > different > neutral 의 best match.
+ */
+function compareRegionPrefs(args: {
+  ideal: ReadonlyArray<RegionPref>;
+  self: SelfRegion;
+}): IdealMatchKind {
+  const { ideal, self } = args;
+  if (!ideal || ideal.length === 0) return "neutral";
+  if (self.region == null) return "neutral";
+
+  let best: IdealMatchKind = "different";
+  for (const row of ideal) {
+    if (row.region !== self.region) continue;
+    // region 일치
+    if (row.detail === "" || row.detail == null) {
+      // 광역 전체 선호 + 본인이 그 광역 → same
+      return "same";
+    }
+    if (self.detail != null && row.detail === self.detail) {
+      return "same";
+    }
+    // region 만 맞고 detail 미일치 (또는 self.detail null)
+    best = "partial";
+  }
+  return best;
+}
+
+export function compareIdealRegions(args: {
+  ideal: ReadonlyArray<RegionPref>;
+  self: SelfRegion;
+}): IdealMatchKind {
+  return compareRegionPrefs(args);
+}
+
+export function compareIdealHometowns(args: {
+  ideal: ReadonlyArray<RegionPref>;
+  self: SelfRegion;
+}): IdealMatchKind {
+  return compareRegionPrefs(args);
+}
+
 type CompareArgs = {
   /**
    * 이상형 값. kind 에 따라:
@@ -124,10 +186,18 @@ export type FriendIdealsRow = {
   updated_at: string;
 };
 
+/** 012 — 한 친구의 이상형 region 선호 한 행. detail '' = 광역 전체. */
+export type FriendIdealRegionRow = { region: string; region_detail: string };
+export type FriendIdealHometownRow = {
+  hometown: string;
+  hometown_detail: string;
+};
+
 export type FriendIdealAggregate = {
   ideals: FriendIdealsRow | null;
-  regions: string[];
-  hometowns: string[];
+  /** 012 §D1 — 객체 배열 (광역+detail). */
+  regions: FriendIdealRegionRow[];
+  hometowns: FriendIdealHometownRow[];
   jobs: string[];
   personality_keywords: string[];
   /** rank 1..3 순서로 정렬된 카테고리 배열. */
@@ -152,10 +222,13 @@ export async function getFriendIdealAggregate(
     prioritiesRes,
   ] = await Promise.all([
     sb.from("friend_ideals").select("*").eq("friend_id", friendId).maybeSingle(),
-    sb.from("friend_ideal_regions").select("region").eq("friend_id", friendId),
+    sb
+      .from("friend_ideal_regions")
+      .select("region, region_detail")
+      .eq("friend_id", friendId),
     sb
       .from("friend_ideal_hometowns")
-      .select("hometown")
+      .select("hometown, hometown_detail")
       .eq("friend_id", friendId),
     sb.from("friend_ideal_jobs").select("job").eq("friend_id", friendId),
     sb
@@ -178,8 +251,24 @@ export async function getFriendIdealAggregate(
 
   return {
     ideals: (idealsRes.data as FriendIdealsRow | null) ?? null,
-    regions: (regionsRes.data ?? []).map((r) => r.region as string),
-    hometowns: (hometownsRes.data ?? []).map((r) => r.hometown as string),
+    regions: (
+      (regionsRes.data ?? []) as Array<{
+        region: string;
+        region_detail: string | null;
+      }>
+    ).map((r) => ({
+      region: r.region,
+      region_detail: r.region_detail ?? "",
+    })),
+    hometowns: (
+      (hometownsRes.data ?? []) as Array<{
+        hometown: string;
+        hometown_detail: string | null;
+      }>
+    ).map((r) => ({
+      hometown: r.hometown,
+      hometown_detail: r.hometown_detail ?? "",
+    })),
     jobs: (jobsRes.data ?? []).map((r) => r.job as string),
     personality_keywords: (keywordsRes.data ?? []).map(
       (r) => r.keyword as string,
@@ -187,6 +276,15 @@ export async function getFriendIdealAggregate(
     priorities: (prioritiesRes.data ?? []).map((r) => r.category as string),
   };
 }
+
+/**
+ * 012 — region/hometown 입력 형태.
+ *
+ * 객체 형태가 정석 (RegionDetailValue) — `{ region, detail }` 으로 detail '' 가능.
+ * 옛 호출처 (string[]) 도 한동안 그대로 들어올 수 있어 string 도 수용 — 그 경우
+ * detail '' (광역 전체) 로 해석한다.
+ */
+export type RegionPrefInput = string | { region: string; detail: string };
 
 export type FriendIdealsUpsertInput = {
   friendId: string;
@@ -198,13 +296,31 @@ export type FriendIdealsUpsertInput = {
   marriage_timing: string | null;
   tattoo: string | null;
   free_text: string | null;
-  regions: string[];
-  hometowns: string[];
+  regions: RegionPrefInput[];
+  hometowns: RegionPrefInput[];
   jobs: string[];
   personality_keywords: string[];
   /** rank 1..3 순서대로 길이 0~3 의 카테고리 배열. */
   priorities: string[];
 };
+
+/**
+ * 012 §D2 — RPC `p_regions text[]` 호환 직렬화.
+ * 문자열: "<region>|" (광역 전체) / 객체: "<region>|<detail>".
+ * 빈 region 입력은 폐기.
+ */
+function serializeRegionInputs(items: RegionPrefInput[]): string[] {
+  const out: string[] = [];
+  for (const item of items) {
+    if (typeof item === "string") {
+      if (item.length === 0) continue;
+      out.push(`${item}|`);
+    } else if (item && typeof item === "object" && item.region) {
+      out.push(`${item.region}|${item.detail ?? ""}`);
+    }
+  }
+  return out;
+}
 
 /**
  * friend_ideals + 1:N 5개 테이블을 한 번에 갱신.
@@ -229,8 +345,8 @@ export async function upsertFriendIdealAggregate(
     p_marriage_timing: input.marriage_timing,
     p_tattoo: input.tattoo,
     p_free_text: input.free_text,
-    p_regions: input.regions,
-    p_hometowns: input.hometowns,
+    p_regions: serializeRegionInputs(input.regions),
+    p_hometowns: serializeRegionInputs(input.hometowns),
     p_jobs: input.jobs,
     p_personality_keywords: input.personality_keywords,
     // priorities 는 SQL function 안에서 ordinality 로 rank 를 부여하므로 상위 3개만 전달.

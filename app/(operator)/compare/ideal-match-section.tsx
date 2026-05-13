@@ -5,6 +5,8 @@ import {
 } from "@/components/operator/ideal-match-row";
 import {
   compareIdealValues,
+  compareIdealRegions,
+  compareIdealHometowns,
   type FriendIdealAggregate,
 } from "@/lib/db/ideals";
 import { compareSelfTrait } from "@/lib/db/self-trait-match";
@@ -13,8 +15,8 @@ import {
   DRINKING_LABEL,
   MARRIAGE_TIMING_LABEL,
   TATTOO_LABEL,
-  getRegionLabel,
-  getHometownLabel,
+  getRegionFullLabel,
+  getHometownFullLabel,
   getJobLabel,
   getSmokingLabel,
   getDrinkingLabel,
@@ -104,33 +106,53 @@ function Direction({
     }),
   });
 
-  // 2. 선호 거주지역 (multi vs region)
+  // 2. 선호 거주지역 (012 — 2단계 region+detail)
   rows.push({
     label: "선호 거주지역",
     idealText:
       ideals.regions.length === 0
         ? "상관없음"
-        : ideals.regions.map((r) => getRegionLabel(r)).join(", "),
-    actualText: target.region ? getRegionLabel(target.region) : "—",
-    tone: compareIdealValues({
-      ideal: ideals.regions,
-      profile: target.region,
-      kind: "multi",
+        : ideals.regions
+            .map((r) =>
+              r.region_detail
+                ? getRegionFullLabel(r.region, r.region_detail)
+                : `${getRegionFullLabel(r.region, "")} 전체`,
+            )
+            .join(", "),
+    actualText: target.region
+      ? getRegionFullLabel(target.region, target.region_detail)
+      : "—",
+    tone: compareIdealRegions({
+      ideal: ideals.regions.map((r) => ({
+        region: r.region,
+        detail: r.region_detail,
+      })),
+      self: { region: target.region, detail: target.region_detail },
     }),
   });
 
-  // 3. 선호 출신지역 (multi vs hometown)
+  // 3. 선호 출신지역 (012 — 2단계 hometown+detail)
   rows.push({
     label: "선호 출신지역",
     idealText:
       ideals.hometowns.length === 0
         ? "상관없음"
-        : ideals.hometowns.map((r) => getHometownLabel(r)).join(", "),
-    actualText: target.hometown ? getHometownLabel(target.hometown) : "—",
-    tone: compareIdealValues({
-      ideal: ideals.hometowns,
-      profile: target.hometown,
-      kind: "multi",
+        : ideals.hometowns
+            .map((r) =>
+              r.hometown_detail
+                ? getHometownFullLabel(r.hometown, r.hometown_detail)
+                : `${getHometownFullLabel(r.hometown, "")} 전체`,
+            )
+            .join(", "),
+    actualText: target.hometown
+      ? getHometownFullLabel(target.hometown, target.hometown_detail)
+      : "—",
+    tone: compareIdealHometowns({
+      ideal: ideals.hometowns.map((r) => ({
+        region: r.hometown,
+        detail: r.hometown_detail,
+      })),
+      self: { region: target.hometown, detail: target.hometown_detail },
     }),
   });
 

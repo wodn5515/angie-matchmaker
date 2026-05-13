@@ -44,7 +44,19 @@ const FriendUpdateSchema = z.object({
     .max(80)
     .optional()
     .transform((v) => v || null),
+  region_detail: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((v) => v || null),
   hometown: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((v) => v || null),
+  hometown_detail: z
     .string()
     .trim()
     .max(80)
@@ -110,6 +122,13 @@ const FriendUpdateSchema = z.object({
     .or(z.literal(""))
     .optional()
     .transform((v) => (v === "" || v == null ? null : v)),
+}).transform((data) => {
+  // 012 §D1 CHECK 정합 — region 없이 detail 만 있는 경우 detail 을 null 로 정규화.
+  return {
+    ...data,
+    region_detail: data.region ? data.region_detail : null,
+    hometown_detail: data.hometown ? data.hometown_detail : null,
+  };
 });
 
 export type FriendActionResult =
