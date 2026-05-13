@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Select, Textarea } from "@/components/ui/input";
 import { Field, FormSection } from "@/components/ui/field";
 import { MultiSelectChip } from "@/components/ui/multi-select-chip";
+import { RegionDetailPicker } from "@/components/ui/region-detail-picker";
 import { RangeSlider } from "@/components/ui/range-slider";
 import { RankingPicker } from "@/components/ui/ranking-picker";
 import {
-  REGION_OPTIONS,
   JOB_OPTIONS,
   PERSONALITY_KEYWORDS,
   PRIORITY_CATEGORIES,
@@ -18,6 +18,8 @@ import {
   TATTOO_OPTIONS,
   BIRTH_YEAR_MIN,
   BIRTH_YEAR_MAX,
+  type RegionDetailValue,
+  type HometownDetailValue,
 } from "@/lib/types/v2-options";
 
 /**
@@ -38,8 +40,10 @@ import {
 export type PreferencesFormDefaults = Partial<{
   age_from: number;
   age_to: number;
-  regions: string[];
-  hometowns: string[];
+  /** 012 — 2단계 광역+detail 객체 배열. detail '' = 광역 전체. */
+  regions: RegionDetailValue[];
+  /** 012 — hometown 도 구조는 같음 (alias 로 의미만 분리). */
+  hometowns: HometownDetailValue[];
   hometown_same_bonus: boolean;
   smoking: string;
   drinking: string;
@@ -67,10 +71,10 @@ export function PreferencesForm({
   const [ageTo, setAgeTo] = React.useState<number | null>(
     defaultValues?.age_to ?? null,
   );
-  const [regions, setRegions] = React.useState<string[]>(
+  const [regions, setRegions] = React.useState<RegionDetailValue[]>(
     defaultValues?.regions ?? [],
   );
-  const [hometowns, setHometowns] = React.useState<string[]>(
+  const [hometowns, setHometowns] = React.useState<HometownDetailValue[]>(
     defaultValues?.hometowns ?? [],
   );
   const [hometownSameBonus, setHometownSameBonus] = React.useState(
@@ -120,20 +124,24 @@ export function PreferencesForm({
           />
         </Field>
 
-        <Field label="선호 거주지역" hint="여러 곳 선택 가능">
-          <MultiSelectChip
+        <Field
+          label="선호 거주지역"
+          hint="광역 행을 펼쳐 구·시 단위까지 선택할 수 있어요"
+        >
+          <RegionDetailPicker
             name="regions"
-            options={REGION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
             value={regions}
             onValueChange={setRegions}
             emptyHint="선택 안 함 = 상관없음"
           />
         </Field>
 
-        <Field label="선호 출신지역" hint="여러 곳 선택 가능">
-          <MultiSelectChip
+        <Field
+          label="선호 출신지역"
+          hint="광역 행을 펼쳐 구·시 단위까지 선택할 수 있어요"
+        >
+          <RegionDetailPicker
             name="hometowns"
-            options={REGION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
             value={hometowns}
             onValueChange={setHometowns}
             emptyHint="선택 안 함 = 상관없음"

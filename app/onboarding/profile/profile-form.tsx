@@ -6,11 +6,13 @@ import { Input, Select } from "@/components/ui/input";
 import { Field, FormSection } from "@/components/ui/field";
 import {
   REGION_OPTIONS,
+  REGION_DETAIL_OPTIONS,
   JOB_OPTIONS,
   SELF_SMOKING_OPTIONS,
   SELF_DRINKING_OPTIONS,
   SELF_MARRIAGE_VIEW_OPTIONS,
   SELF_TATTOO_OPTIONS,
+  type RegionCode,
 } from "@/lib/types/v2-options";
 
 /**
@@ -32,7 +34,9 @@ export type OnboardingProfileFormDefaults = Partial<{
   recommender_relation: string;
   birth_year: number | null;
   region: string | null;
+  region_detail: string | null;
   hometown: string | null;
+  hometown_detail: string | null;
   occupation: string | null;
   instagram: string | null;
   relationship_status: string | null;
@@ -69,6 +73,22 @@ export function OnboardingProfileForm({
       dv.tattoo
     ),
   );
+  // 012 §D5 — 거주/출신 region cascade (region 선택 시 detail Select 등장).
+  // controlled state — region 바뀌면 detail 자동 초기화 (cascade 정합).
+  const [region, setRegion] = React.useState<string>(dv.region ?? "");
+  const [regionDetail, setRegionDetail] = React.useState<string>(
+    dv.region_detail ?? "",
+  );
+  const [hometown, setHometown] = React.useState<string>(dv.hometown ?? "");
+  const [hometownDetail, setHometownDetail] = React.useState<string>(
+    dv.hometown_detail ?? "",
+  );
+  const regionDetails = region
+    ? REGION_DETAIL_OPTIONS[region as RegionCode] ?? []
+    : [];
+  const hometownDetails = hometown
+    ? REGION_DETAIL_OPTIONS[hometown as RegionCode] ?? []
+    : [];
 
   return (
     <form action={action} className="space-y-4">
@@ -182,7 +202,11 @@ export function OnboardingProfileForm({
                 <Select
                   id="region"
                   name="region"
-                  defaultValue={dv.region ?? ""}
+                  value={region}
+                  onChange={(e) => {
+                    setRegion(e.target.value);
+                    setRegionDetail("");
+                  }}
                 >
                   <option value="">선택 안 함</option>
                   {REGION_OPTIONS.map((o) => (
@@ -196,7 +220,11 @@ export function OnboardingProfileForm({
                 <Select
                   id="hometown"
                   name="hometown"
-                  defaultValue={dv.hometown ?? ""}
+                  value={hometown}
+                  onChange={(e) => {
+                    setHometown(e.target.value);
+                    setHometownDetail("");
+                  }}
                 >
                   <option value="">선택 안 함</option>
                   {REGION_OPTIONS.map((o) => (
@@ -207,6 +235,49 @@ export function OnboardingProfileForm({
                 </Select>
               </Field>
             </div>
+            {/* 012 §D5 — region cascade: 광역 선택 후 detail 옵션이 있으면 */}
+            {regionDetails.length > 0 || hometownDetails.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {regionDetails.length > 0 ? (
+                  <Field label="거주 세부 (구·시)" htmlFor="region_detail">
+                    <Select
+                      id="region_detail"
+                      name="region_detail"
+                      value={regionDetail}
+                      onChange={(e) => setRegionDetail(e.target.value)}
+                    >
+                      <option value="">선택 안 함</option>
+                      {regionDetails.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                ) : (
+                  <div />
+                )}
+                {hometownDetails.length > 0 ? (
+                  <Field label="출신 세부 (구·시)" htmlFor="hometown_detail">
+                    <Select
+                      id="hometown_detail"
+                      name="hometown_detail"
+                      value={hometownDetail}
+                      onChange={(e) => setHometownDetail(e.target.value)}
+                    >
+                      <option value="">선택 안 함</option>
+                      {hometownDetails.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                ) : (
+                  <div />
+                )}
+              </div>
+            ) : null}
             <Field label="직업" htmlFor="occupation">
               <Select
                 id="occupation"

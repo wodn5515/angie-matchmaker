@@ -7,8 +7,8 @@ import {
   MATCH_INTEREST_LABEL,
 } from "@/lib/types/domain";
 import {
-  getRegionLabel,
-  getHometownLabel,
+  getRegionFullLabel,
+  getHometownFullLabel,
   getJobLabel,
   getSmokingLabel,
   getDrinkingLabel,
@@ -111,15 +111,19 @@ function buildRows(a: Friend, b: Friend): Row[] {
   rows.push(
     text(
       "거주 지역",
-      a.region ? getRegionLabel(a.region) : null,
-      b.region ? getRegionLabel(b.region) : null,
+      a.region ? getRegionFullLabel(a.region, a.region_detail) : null,
+      b.region ? getRegionFullLabel(b.region, b.region_detail) : null,
     ),
   );
   rows.push(
     text(
       "출신 지역",
-      a.hometown ? getHometownLabel(a.hometown) : null,
-      b.hometown ? getHometownLabel(b.hometown) : null,
+      a.hometown
+        ? getHometownFullLabel(a.hometown, a.hometown_detail)
+        : null,
+      b.hometown
+        ? getHometownFullLabel(b.hometown, b.hometown_detail)
+        : null,
     ),
   );
   rows.push(

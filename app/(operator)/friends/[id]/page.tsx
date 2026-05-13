@@ -20,8 +20,8 @@ import {
   FRIEND_STATUS_LABEL,
 } from "@/lib/types/domain";
 import {
-  getRegionLabel,
-  getHometownLabel,
+  getRegionFullLabel,
+  getHometownFullLabel,
   getJobLabel,
   getSmokingLabel,
   getDrinkingLabel,
@@ -88,7 +88,9 @@ export default async function FriendDetailPage({
             {GENDER_LABEL[friend.gender]} · 선호{" "}
             {PREFERRED_GENDER_LABEL[friend.preferred_gender]}
             {friend.birth_year ? ` · ${friend.birth_year}년생` : ""}
-            {friend.region ? ` · 거주 ${getRegionLabel(friend.region)}` : ""}
+            {friend.region
+              ? ` · 거주 ${getRegionFullLabel(friend.region, friend.region_detail)}`
+              : ""}
             {friend.occupation ? ` · ${getJobLabel(friend.occupation)}` : ""}
           </p>
           <p className="mt-1 text-[11px] text-[var(--color-fg-muted)]">
@@ -164,7 +166,14 @@ export default async function FriendDetailPage({
             />
             <Field
               label="출신 지역"
-              value={friend.hometown ? getHometownLabel(friend.hometown) : "—"}
+              value={
+                friend.hometown
+                  ? getHometownFullLabel(
+                      friend.hometown,
+                      friend.hometown_detail,
+                    )
+                  : "—"
+              }
             />
             <Field
               label="연애 상태"

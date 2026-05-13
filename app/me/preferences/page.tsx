@@ -3,6 +3,10 @@ import { UserShell } from "@/components/user/user-shell";
 import { PreferencesForm } from "@/app/onboarding/preferences/preferences-form";
 import { requireOnboardedUser } from "@/lib/auth/user";
 import { getFriendIdealAggregate } from "@/lib/db/ideals";
+import type {
+  RegionDetailValue,
+  HometownDetailValue,
+} from "@/lib/types/v2-options";
 import { updateMePreferencesAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -23,8 +27,17 @@ export default async function MePreferencesPage() {
     marriage_timing: ideals.ideals?.marriage_timing ?? "any",
     tattoo: ideals.ideals?.tattoo ?? "any",
     free_text: ideals.ideals?.free_text ?? "",
-    regions: ideals.regions,
-    hometowns: ideals.hometowns,
+    // 012 — DB 객체 키 (region_detail/hometown_detail) → 폼 키 (RegionDetailValue
+    // / HometownDetailValue) 매핑. 구조는 동일 (광역 사전 공유) 이지만 alias 로
+    // 거주/출신 의미 분리.
+    regions: ideals.regions.map<RegionDetailValue>((r) => ({
+      region: r.region,
+      detail: r.region_detail,
+    })),
+    hometowns: ideals.hometowns.map<HometownDetailValue>((h) => ({
+      region: h.hometown,
+      detail: h.hometown_detail,
+    })),
     jobs: ideals.jobs,
     personality_keywords: ideals.personality_keywords,
     priorities: ideals.priorities,
