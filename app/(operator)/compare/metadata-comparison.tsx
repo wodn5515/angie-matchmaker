@@ -100,6 +100,7 @@ function buildRows(a: Friend, b: Friend): Row[] {
   );
   rows.push(num("출생 연도", a.birth_year, b.birth_year));
   rows.push(text("거주 지역", a.region, b.region));
+  rows.push(text("출신 지역", a.hometown, b.hometown));
   rows.push(text("직업", a.occupation, b.occupation));
   rows.push(
     text(
@@ -119,12 +120,12 @@ function buildRows(a: Friend, b: Friend): Row[] {
       b.match_interest ? MATCH_INTEREST_LABEL[b.match_interest] : null,
     ),
   );
-  rows.push(num("친밀도 (1~5)", a.closeness, b.closeness));
-  rows.push(text("알게 된 경위", a.how_we_met, b.how_we_met));
+  rows.push(text("추천인", a.recommender_name, b.recommender_name));
+  rows.push(
+    text("추천인 관계", a.recommender_relation, b.recommender_relation),
+  );
   rows.push(tagsRow(a.tags, b.tags));
   rows.push(text("인스타", a.instagram, b.instagram));
-  rows.push(text("카카오", a.kakao_id, b.kakao_id));
-  rows.push(text("전화", a.phone, b.phone));
   rows.push(notesRow(a.notes, b.notes));
 
   return rows;

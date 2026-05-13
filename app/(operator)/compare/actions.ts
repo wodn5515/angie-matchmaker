@@ -42,7 +42,8 @@ export async function upsertPairAction(
   if (Object.keys(patch).length > 0) {
     await updatePair(session.userId, pair.id, patch);
   }
-  revalidatePath("/matches");
+  // V2 에서 /matches 폐기 — 비교 뷰 자체와 대시보드만 revalidate.
+  revalidatePath(`/compare?a=${parsed.friendAId}&b=${parsed.friendBId}`);
   revalidatePath("/");
   return { ok: true };
 }
