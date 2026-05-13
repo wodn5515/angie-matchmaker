@@ -60,7 +60,6 @@
  */
 
 import { describe, expect, it } from "vitest";
-// @ts-expect-error worker 미작성 — lib/db/self-trait-match.ts (또는 lib/db/ideals.ts 확장)
 import { compareSelfTrait } from "@/lib/db/self-trait-match";
 
 describe("compareSelfTrait — neutral 공통 분기 (any / null)", () => {

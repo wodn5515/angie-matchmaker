@@ -27,13 +27,9 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  // @ts-expect-error worker 미작성
   getSmokingLabel,
-  // @ts-expect-error worker 미작성
   getDrinkingLabel,
-  // @ts-expect-error worker 미작성
   getMarriageViewLabel,
-  // @ts-expect-error worker 미작성
   getTattooLabel,
 } from "@/lib/types/v2-options";
 
