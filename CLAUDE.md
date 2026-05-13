@@ -244,7 +244,8 @@ V2.x 에서 추가 폐기된 라우트: `/signup` — 010-v2-unified-login 에�
 - 모든 작업은 `.worktrees/feature-<slug>` / `meta-<slug>` / `hotfix-<slug>` 에서 진행
 - `master` / `stage` 에 **직접 push 금지** (훅이 차단)
 - **force push 금지** (`--force`, `-f`, `+refs/*`)
-- `git reset --hard`, `git merge` 직접 수행 금지 (훅이 차단)
+- `git reset --hard` 직접 수행 금지 (훅이 차단)
+- `master` / `stage` 브랜치에서 `git merge` 직접 수행 금지 (훅이 차단) — 작업 브랜치 (`feature/*` / `hotfix/*` / `meta/*`) 에서 `origin/stage` 또는 `origin/master` 를 흡수해 conflict 를 해소하는 정상 동기화는 허용
 - PR 머지는 **사용자만** 수행
 
 ## 12. 환경 변수
@@ -331,7 +332,8 @@ docs/decisions/
 ## 14. 금지 사항 (요약)
 
 - `master` / `stage` 직접 push (훅 차단)
-- force push, `git reset --hard`, `git merge` 직접 수행 (훅 차단)
+- force push, `git reset --hard` 직접 수행 (훅 차단)
+- `master` / `stage` 브랜치에서 `git merge` 직접 수행 (훅 차단 — 작업 브랜치의 정상 conflict 해소는 허용)
 - PR 머지 (사용자만 수행)
 - 머지된 브랜치에 추가 push
 - 열린 PR이 있는데 같은 주제로 새 PR 생성

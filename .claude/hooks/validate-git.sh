@@ -11,8 +11,10 @@
 # [정탐: 차단돼야 함]
 #   git push origin stage
 #   git push origin main
+#   git push origin master
 #   git push origin HEAD:stage
 #   git push origin HEAD:main
+#   git push origin HEAD:master
 #   git push --force origin stage
 #   git push -f origin feature/foo                      # -f short option
 #   git push -fu origin feature/foo                     # -f 결합 플래그
@@ -80,23 +82,24 @@ if echo "$COMMAND" | grep -qE '\bgit[[:space:]]+push\b'; then
   fi
 fi
 
-# git merge 차단: 현재 브랜치가 stage/main인 경우에만 차단.
+# git merge 차단: 현재 브랜치가 stage/main/master인 경우에만 차단.
 #
-# 의도: stage/main에 우회 머지(PR 미경유)를 막는 것.
-# feature/hotfix/chore/fix 등 작업 브랜치에서 origin/stage·origin/main을 흡수해
-# 충돌을 해소하는 정상 동기화는 허용. 어차피 stage/main으로의 push 자체가
+# 의도: 보호 브랜치(stage / main / master)에 우회 머지(PR 미경유)를 막는 것.
+# feature/hotfix/chore/fix 등 작업 브랜치에서 origin/stage·origin/main·origin/master를
+# 흡수해 충돌을 해소하는 정상 동기화는 허용. 어차피 보호 브랜치로의 push 자체가
 # 아래 push 차단 로직에서 막히므로, merge 단계에서 일괄 차단할 필요가 없다.
 #
 # 구 구현은 모든 git merge를 차단해 feature 브랜치의 stage 흡수까지 막아
 # /followup 스킬의 컨플릭트 해소 절차와 모순됐다 (PR #281 절차).
+# matchmaker 기본 브랜치는 `master` (CLAUDE.md §11) 라 main 외에 master도 포함.
 if echo "$COMMAND" | grep -qE 'git\s+merge\b'; then
   CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
   CURRENT_BRANCH=""
   if [ -n "$CWD" ] && [ -d "$CWD" ]; then
     CURRENT_BRANCH=$(git -C "$CWD" branch --show-current 2>/dev/null)
   fi
-  if [ "$CURRENT_BRANCH" = "stage" ] || [ "$CURRENT_BRANCH" = "main" ]; then
-    echo "🔴 차단: stage/main 브랜치에서 git merge는 허용되지 않습니다. PR을 통해서만 머지하세요." >&2
+  if [ "$CURRENT_BRANCH" = "stage" ] || [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+    echo "🔴 차단: 보호 브랜치(stage/main/master)에서 git merge는 허용되지 않습니다. PR을 통해서만 머지하세요." >&2
     exit 2
   fi
 fi
@@ -188,13 +191,18 @@ if echo "$COMMAND" | grep -qE '\bgit[[:space:]]+push\b'; then
     fi
   fi
 
-  # 3) 브랜치가 stage/main이면 차단 (정확히 일치 비교 — substring 매칭 금지)
+  # 3) 브랜치가 stage/main/master이면 차단 (정확히 일치 비교 — substring 매칭 금지)
+  #    matchmaker 기본 브랜치는 master (CLAUDE.md §11) 라 main 외에 master도 차단.
   if [ "$BRANCH" = "stage" ]; then
     echo "🔴 차단: stage 브랜치에 push할 수 없습니다. PR을 통해서만 머지하세요." >&2
     exit 2
   fi
   if [ "$BRANCH" = "main" ]; then
     echo "🔴 차단: main 브랜치에 push할 수 없습니다. PR을 통해서만 머지하세요." >&2
+    exit 2
+  fi
+  if [ "$BRANCH" = "master" ]; then
+    echo "🔴 차단: master 브랜치에 push할 수 없습니다. PR을 통해서만 머지하세요." >&2
     exit 2
   fi
 
