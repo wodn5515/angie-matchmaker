@@ -6,6 +6,15 @@ import {
   RELATIONSHIP_STATUS_LABEL,
   MATCH_INTEREST_LABEL,
 } from "@/lib/types/domain";
+import {
+  getRegionLabel,
+  getHometownLabel,
+  getJobLabel,
+  getSmokingLabel,
+  getDrinkingLabel,
+  getMarriageViewLabel,
+  getTattooLabel,
+} from "@/lib/types/v2-options";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { profileCompletion } from "@/lib/db/friends";
@@ -99,9 +108,27 @@ function buildRows(a: Friend, b: Friend): Row[] {
     ),
   );
   rows.push(num("출생 연도", a.birth_year, b.birth_year));
-  rows.push(text("거주 지역", a.region, b.region));
-  rows.push(text("출신 지역", a.hometown, b.hometown));
-  rows.push(text("직업", a.occupation, b.occupation));
+  rows.push(
+    text(
+      "거주 지역",
+      a.region ? getRegionLabel(a.region) : null,
+      b.region ? getRegionLabel(b.region) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "출신 지역",
+      a.hometown ? getHometownLabel(a.hometown) : null,
+      b.hometown ? getHometownLabel(b.hometown) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "직업",
+      a.occupation ? getJobLabel(a.occupation) : null,
+      b.occupation ? getJobLabel(b.occupation) : null,
+    ),
+  );
   rows.push(
     text(
       "연애 상태",
@@ -118,6 +145,35 @@ function buildRows(a: Friend, b: Friend): Row[] {
       "매칭 관심도",
       a.match_interest ? MATCH_INTEREST_LABEL[a.match_interest] : null,
       b.match_interest ? MATCH_INTEREST_LABEL[b.match_interest] : null,
+    ),
+  );
+  // 자기 보고 4 항목 (009) — 같음/다름 색상 단서.
+  rows.push(
+    text(
+      "흡연",
+      a.smoking ? getSmokingLabel(a.smoking) : null,
+      b.smoking ? getSmokingLabel(b.smoking) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "음주",
+      a.drinking ? getDrinkingLabel(a.drinking) : null,
+      b.drinking ? getDrinkingLabel(b.drinking) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "결혼관",
+      a.marriage_view ? getMarriageViewLabel(a.marriage_view) : null,
+      b.marriage_view ? getMarriageViewLabel(b.marriage_view) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "문신",
+      a.tattoo ? getTattooLabel(a.tattoo) : null,
+      b.tattoo ? getTattooLabel(b.tattoo) : null,
     ),
   );
   rows.push(text("추천인", a.recommender_name, b.recommender_name));

@@ -61,12 +61,11 @@ matchmaker/
 │   └── decisions/       # 000~006 + 작업별 NNN-<slug>.md
 ├── app/
 │   ├── (operator)/      # 인증 필요 라우트 그룹 (대시보드/가입자/비교/설문/설정)
-│   ├── signup/          # Google OAuth 가입 진입
+│   ├── login/           # OAuth 단일 진입점 (운영자·가입자 공용 — 010-v2-unified-login)
 │   ├── onboarding/      # 3-step 온보딩 (profile / preferences / survey)
 │   ├── me/              # 가입자 자기 페이지 (profile / preferences / survey/[chapter])
 │   ├── pending/         # 심사 대기 안내
 │   ├── rejected/        # 가입 거절 안내
-│   ├── login/           # 운영자 OAuth 진입
 │   └── auth/            # OAuth callback / signout
 ├── components/
 │   ├── ui/              # 자체 UI 프리미티브 (Button/Card/Input/Badge/Empty/Stepper/
@@ -121,11 +120,11 @@ PRD §6 + 결정 로그 기준. **Black base + Pink accent 다크 톤**. 두 청
 
 ## 6. 데이터 모델
 
-PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql` → `0004_v2_1_followup.sql`).
+PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql` → `0004_v2_1_followup.sql` → `0005_friends_self_traits.sql`).
 
 | 테이블 | 역할 | 핵심 규칙 |
 |---|---|---|
-| `friends` | 가입자 (V2 확장 후) | `auth_user_id UNIQUE` + `recommender_*` NOT NULL + `status` CHECK + `onboarding_step` (1/2/3/null) |
+| `friends` | 가입자 (V2 확장 후) | `auth_user_id UNIQUE` + `recommender_*` NOT NULL + `status` CHECK + `onboarding_step` (1/2/3/null) + **자기 보고 4 항목 (009: smoking/drinking/marriage_view/tattoo enum, nullable)** |
 | `friend_ideals` | 이상형 단일값 (1:1) | `friend_id` PK, ON DELETE CASCADE. smoking/drinking/marriage_timing/tattoo enum + age_from/age_to + hometown_same_bonus + free_text |
 | `friend_ideal_regions` | 선호 거주지역 다중 (1:N) | PRIMARY KEY (friend_id, region) |
 | `friend_ideal_hometowns` | 선호 출신지역 다중 (1:N) | PRIMARY KEY (friend_id, hometown) |
@@ -147,6 +146,9 @@ V2 friends 에서 제거된 V1 컬럼: `closeness`, `how_we_met`, `kakao_id`, `p
 V2.1 신규 RPC function (0004 마이그레이션):
 - `upsert_friend_ideal_aggregate(p_friend_id uuid, ...)` — `friend_ideals` 1:1 upsert + 1:N 5개 (regions/hometowns/jobs/personality_keywords/priorities) replace 를 한 plpgsql 트랜잭션 안에서 처리. `lib/db/ideals.ts` 의 `upsertFriendIdealAggregate` 가 단일 RPC 로 호출.
 
+009 신규 컬럼 (0005 마이그레이션):
+- `friends.smoking / drinking / marriage_view / tattoo` 4 컬럼 (모두 nullable + CHECK). 본인 자기 보고로 이상형 양방향 매칭에 사용 — `compareSelfTrait` (`lib/db/self-trait-match.ts`) 가 항목별 매트릭스로 same/partial/different/neutral 판정.
+
 주요 규칙:
 - 모든 DB 호출은 `lib/db/*` 의 service-role 클라이언트로만 (RLS는 deny-all)
 - 운영자 인가: `requireOperator()` + `owner_id` 필터로 앱 레이어에서
@@ -166,7 +168,6 @@ V2.1 신규 RPC function (0004 마이그레이션):
 | `/surveys/standard` | 운영자 | 표준 설문 편집 |
 | `/surveys/custom/new`, `/surveys/custom/[id]` | 운영자 | 커스텀 설문 |
 | `/settings` | 운영자 | 운영자 설정 |
-| `/signup` | — | Google OAuth 가입 진입 |
 | `/onboarding/profile` | 가입자 (friends row 없음) | Step 1 (필수: 이름·성별·성취향·추천인) |
 | `/onboarding/preferences` | 가입자 (onboarding_step=2) | Step 2 (이상형, 선택) |
 | `/onboarding/survey` | 가입자 (onboarding_step=3) | Step 3 (연애 성향 테스트, 선택) |
@@ -177,9 +178,10 @@ V2.1 신규 RPC function (0004 마이그레이션):
 | `/me/survey/[chapter]` | 〃 | 챕터 runner (자동 저장) |
 | `/pending` | 가입자 (status=pending) | 심사 대기 안내 |
 | `/rejected` | 가입자 (status=rejected) | 가입 거절 안내 |
-| `/login`, `/auth/callback`, `/auth/signout` | — | OAuth (운영자·가입자 공용) |
+| `/login`, `/auth/callback`, `/auth/signout` | — | OAuth (운영자·가입자 공용 단일 진입점 — 010-v2-unified-login) |
 
 V2 에서 폐기된 V1 라우트: `/friends/new`, `/friends/invites`, `/surveys/send`, `/surveys/invitations`, `/matches`, `/r/[token]/**`, `/s/[token]/**`.
+V2.x 에서 추가 폐기된 라우트: `/signup` — 010-v2-unified-login 에서 `/login` 단일 진입점으로 통합. 외부 링크 호환을 위해 가드가 흡수 처리.
 
 라우팅 가드 매트릭스 (OAuth × 운영자 화이트리스트 × `friends.status` × `onboarding_step`) 는 `lib/auth/guard.ts` 의 `resolveGuardTarget` 순수 함수로 분리되어 있다 (PRD §5.5 + decisions/006).
 
@@ -226,6 +228,7 @@ V2 에서 폐기된 V1 라우트: `/friends/new`, `/friends/invites`, `/surveys/
 | `app/**`, `components/**`, `lib/**`, `supabase/migrations/**` | **`/work`** | 워크트리 → 디자이너·TDD 게이트 → 팀 spawn → peer 검증 → PR |
 | `README.md`, `CLAUDE.md`, `AGENTS.md`, `docs/**`, `.claude/**`, `.gitignore`, dev 도구 설정, CI 워크플로우 | **`/meta`** | 워크트리 → Lead 단독 작업 → PR (게이트·팀·peer 생략) |
 | 긴급 수정 (`master` 베이스) | **`/hotfix`** | stage 우회 |
+| prod 배포 (`stage` → `master`) | **`/deploy`** | 워크트리 없음 — Lead 가 master..stage diff 분석 후 release PR 본문(변경 요약·배포 전 체크리스트·검증 plan·관련 결정 로그) 자동 작성 + 생성 |
 
 판단 기준: **"이 변경이 사용자가 보는 화면·동작·데이터를 바꾸는가"** — 그러면 `/work`, 아니면 `/meta`. 애매하면 `/work` 가 안전.
 
@@ -245,7 +248,8 @@ V2 에서 폐기된 V1 라우트: `/friends/new`, `/friends/invites`, `/surveys/
 - 모든 작업은 `.worktrees/feature-<slug>` / `meta-<slug>` / `hotfix-<slug>` 에서 진행
 - `master` / `stage` 에 **직접 push 금지** (훅이 차단)
 - **force push 금지** (`--force`, `-f`, `+refs/*`)
-- `git reset --hard`, `git merge` 직접 수행 금지 (훅이 차단)
+- `git reset --hard` 직접 수행 금지 (훅이 차단)
+- `master` / `stage` 브랜치에서 `git merge` 직접 수행 금지 (훅이 차단) — 작업 브랜치 (`feature/*` / `hotfix/*` / `meta/*`) 에서 `origin/stage` 또는 `origin/master` 를 흡수해 conflict 를 해소하는 정상 동기화는 허용
 - PR 머지는 **사용자만** 수행
 
 ## 12. 환경 변수
@@ -332,7 +336,8 @@ docs/decisions/
 ## 14. 금지 사항 (요약)
 
 - `master` / `stage` 직접 push (훅 차단)
-- force push, `git reset --hard`, `git merge` 직접 수행 (훅 차단)
+- force push, `git reset --hard` 직접 수행 (훅 차단)
+- `master` / `stage` 브랜치에서 `git merge` 직접 수행 (훅 차단 — 작업 브랜치의 정상 conflict 해소는 허용)
 - PR 머지 (사용자만 수행)
 - 머지된 브랜치에 추가 push
 - 열린 PR이 있는데 같은 주제로 새 PR 생성

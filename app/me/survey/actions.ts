@@ -81,7 +81,7 @@ export async function finishSurveyAction(): Promise<{
 }> {
   await ensureNotOperator();
   const session = await getCurrentUser();
-  if (!session) return { ok: true, nextHref: "/signup" };
+  if (!session) return { ok: true, nextHref: "/login" };
   if (session.status === "rejected") return { ok: true, nextHref: "/rejected" };
 
   if (session.status === "pending" && session.onboardingStep !== null) {

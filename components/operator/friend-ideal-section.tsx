@@ -3,12 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   PERSONALITY_KEYWORD_LABEL,
   PRIORITY_CATEGORY_LABEL,
-  REGION_LABEL,
-  JOB_LABEL,
   SMOKING_LABEL,
   DRINKING_LABEL,
   MARRIAGE_TIMING_LABEL,
   TATTOO_LABEL,
+  getRegionLabel,
+  getHometownLabel,
+  getJobLabel,
 } from "@/lib/types/v2-options";
 
 /**
@@ -71,7 +72,7 @@ export function FriendIdealSection({
             value={
               ideal.regions.length === 0
                 ? "상관없음"
-                : ideal.regions.map((r) => REGION_LABEL[r] ?? r).join(", ")
+                : ideal.regions.map((r) => getRegionLabel(r)).join(", ")
             }
           />
           <Row
@@ -79,7 +80,7 @@ export function FriendIdealSection({
             value={
               ideal.hometowns.length === 0
                 ? "상관없음"
-                : `${ideal.hometowns.map((r) => REGION_LABEL[r] ?? r).join(", ")}${ideal.hometown_same_bonus ? " · 같은 출신 가산" : ""}`
+                : `${ideal.hometowns.map((r) => getHometownLabel(r)).join(", ")}${ideal.hometown_same_bonus ? " · 같은 출신 가산" : ""}`
             }
           />
           <Row
@@ -107,7 +108,7 @@ export function FriendIdealSection({
             value={
               ideal.jobs.length === 0
                 ? "상관없음"
-                : ideal.jobs.map((j) => JOB_LABEL[j] ?? j).join(", ")
+                : ideal.jobs.map((j) => getJobLabel(j)).join(", ")
             }
           />
         </dl>

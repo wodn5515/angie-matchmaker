@@ -4,7 +4,14 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Field, FormSection } from "@/components/ui/field";
-import { REGION_OPTIONS, JOB_OPTIONS } from "@/lib/types/v2-options";
+import {
+  REGION_OPTIONS,
+  JOB_OPTIONS,
+  SELF_SMOKING_OPTIONS,
+  SELF_DRINKING_OPTIONS,
+  SELF_MARRIAGE_VIEW_OPTIONS,
+  SELF_TATTOO_OPTIONS,
+} from "@/lib/types/v2-options";
 
 /**
  * V2 온보딩 Step 1 + `/me/profile` 공용 폼 (가입자 기본 정보).
@@ -30,6 +37,11 @@ export type OnboardingProfileFormDefaults = Partial<{
   instagram: string | null;
   relationship_status: string | null;
   match_interest: string | null;
+  // 009 — 자기 보고 4 항목
+  smoking: string | null;
+  drinking: string | null;
+  marriage_view: string | null;
+  tattoo: string | null;
 }>;
 
 export function OnboardingProfileForm({
@@ -50,7 +62,11 @@ export function OnboardingProfileForm({
       dv.occupation ||
       dv.instagram ||
       dv.relationship_status ||
-      dv.match_interest
+      dv.match_interest ||
+      dv.smoking ||
+      dv.drinking ||
+      dv.marriage_view ||
+      dv.tattoo
     ),
   );
 
@@ -230,6 +246,70 @@ export function OnboardingProfileForm({
                   <option value="high">적극</option>
                   <option value="medium">보통</option>
                   <option value="low">소극</option>
+                </Select>
+              </Field>
+            </div>
+          </FormSection>
+
+          <FormSection
+            title="라이프스타일"
+            subtitle="안 적어도 OK, 다만 매칭 정확도 ↑ — 이상형 비교에 직접 쓰여요"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="흡연" htmlFor="smoking">
+                <Select
+                  id="smoking"
+                  name="smoking"
+                  defaultValue={dv.smoking ?? ""}
+                >
+                  <option value="">선택 안 함</option>
+                  {SELF_SMOKING_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="음주" htmlFor="drinking">
+                <Select
+                  id="drinking"
+                  name="drinking"
+                  defaultValue={dv.drinking ?? ""}
+                >
+                  <option value="">선택 안 함</option>
+                  {SELF_DRINKING_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="결혼관" htmlFor="marriage_view">
+                <Select
+                  id="marriage_view"
+                  name="marriage_view"
+                  defaultValue={dv.marriage_view ?? ""}
+                >
+                  <option value="">선택 안 함</option>
+                  {SELF_MARRIAGE_VIEW_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="문신" htmlFor="tattoo">
+                <Select
+                  id="tattoo"
+                  name="tattoo"
+                  defaultValue={dv.tattoo ?? ""}
+                >
+                  <option value="">선택 안 함</option>
+                  {SELF_TATTOO_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </Select>
               </Field>
             </div>

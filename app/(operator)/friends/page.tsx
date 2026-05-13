@@ -17,6 +17,7 @@ import {
   FRIEND_STATUS_LABEL,
   type FriendStatus,
 } from "@/lib/types/domain";
+import { getRegionLabel, getJobLabel } from "@/lib/types/v2-options";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +90,7 @@ export default async function FriendsPage({
         counts.all === 0 ? (
           <EmptyState
             title="아직 가입자가 없어요"
-            description="가입 페이지 링크(/signup) 를 지인에게 공유해보세요. Google 로그인으로 누구나 가입할 수 있어요."
+            description="가입 페이지 링크(/login) 를 지인에게 공유해보세요. Google 로그인으로 누구나 가입할 수 있어요."
           />
         ) : (
           <EmptyState title="조건에 맞는 가입자가 없어요" />
@@ -111,7 +112,10 @@ export default async function FriendsPage({
                           <p className="mt-0.5 text-[11px] text-[var(--color-fg-muted)]">
                             {GENDER_LABEL[f.gender]}
                             {f.birth_year ? ` · ${f.birth_year}년생` : ""}
-                            {f.region ? ` · ${f.region}` : ""}
+                            {f.region ? ` · ${getRegionLabel(f.region)}` : ""}
+                            {f.occupation
+                              ? ` · ${getJobLabel(f.occupation)}`
+                              : ""}
                           </p>
                           <p className="mt-1 text-[11px] text-[var(--color-fg-subtle)] truncate">
                             추천: {f.recommender_name || "(없음)"}

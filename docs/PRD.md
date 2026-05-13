@@ -41,7 +41,7 @@ V1 의 "운영자가 친구 카드를 일일이 채우는 1인 CRM" 결은 폐�
 | 운영자 역할 | CRM 관리자 + 매칭 결정자 | **매칭 검토자 only** |
 | 가입 안전 장치 | 없음 (운영자 직접 등록이라 불필요) | **추천인 입력 필수 + 운영자 수동 심사** |
 | 매칭 결과 통보 | (의도적으로) 비교 뷰 메모만 | 카톡 외부 진행, 사이트는 운영자 노트장 (의미 동일) |
-| 친구 측 라우트 | `/r/[token]`, `/s/[token]` (토큰) | `/signup`, `/onboarding/*`, `/me/*` (OAuth) |
+| 친구 측 라우트 | `/r/[token]`, `/s/[token]` (토큰) | `/login` (운영자·가입자 공용 진입), `/onboarding/*`, `/me/*` (OAuth) |
 
 ---
 
@@ -54,7 +54,7 @@ V1 의 "운영자가 친구 카드를 일일이 채우는 1인 CRM" 결은 폐�
 - 운영자 본인은 가입자(friends) row 에 포함되지 않음 — auth.users 만 있고 friends 엔 없음
 
 ### 2.2 Self-signup User (자가 가입자)
-- Google OAuth 로 `/signup` 페이지에서 가입
+- Google OAuth 로 `/login` 페이지에서 가입 (운영자·가입자 공용 진입점 — 010-v2-unified-login)
 - 본인 정보(이름·성별·성취향·추천인 + 선택 정보) 직접 입력
 - 가입 직후 status = `pending` (운영자 심사 대기)
 - 승인 시 매칭 풀 합류 / 거절 시 가입 차단
@@ -72,7 +72,8 @@ V1 의 "운영자가 친구 카드를 일일이 채우는 1인 CRM" 결은 폐�
 ### 3.1 가입 / 온보딩
 
 #### 3.1.1 Google OAuth 가입
-- `/signup` 진입 → Google OAuth 인증 → 신규 가입자면 `/onboarding/profile` 자동 라우팅
+- `/login` 단일 진입점 → Google OAuth 인증 → 신규 가입자면 `/onboarding/profile`,
+  기존 운영자면 `/`, 기존 승인 가입자면 `/me` 로 proxy 가드가 자동 분기 (010-v2-unified-login)
 - 이메일은 OAuth 자동 확보 → `friends.email` 자동 저장
 - `auth_user_id` UNIQUE — 한 Google 계정 = 한 가입자
 
@@ -80,9 +81,11 @@ V1 의 "운영자가 친구 카드를 일일이 채우는 1인 CRM" 결은 폐�
 
 | Step | 라우트 | 필수 여부 | 내용 |
 |---|---|---|---|
-| 1 | `/onboarding/profile` | 필수 | 이름·성별·성취향·추천인(이름+관계) + 인스타·출생연도·거주지역·출신지역·직업·연애상태·매칭관심도 (선택) |
+| 1 | `/onboarding/profile` | 필수 | 이름·성별·성취향·추천인(이름+관계) + 인스타·출생연도·거주지역·출신지역·직업·연애상태·매칭관심도·**흡연·음주·결혼관·문신** (선택) |
 | 2 | `/onboarding/preferences` | 선택 (skip 가능) | "이런 분이면 좋겠어요" — 3단 구조 |
 | 3 | `/onboarding/survey` | 선택 (skip 가능) | 연애 성향 테스트 (V1 표준 설문 시스템 재활용) |
+
+> 권장 입력 (선택) 13 개 = 인스타·출생연도·거주지역·출신지역·직업·연애상태·매칭관심도 (이전 7) + 흡연·음주·결혼관·문신 (009 — 이상형 매칭 대칭). 자기 보고 4 항목은 비교 뷰의 양방향 이상형 매칭에 직접 쓰인다.
 
 - Step 1 완료 시점에 `friends` row 생성 (`status='pending'`, `onboarding_step=2` 또는 `null`)
 - Step 2·3 는 같은 row 의 컬럼·서브테이블에 채워나가기. skip 시 빈 채로
@@ -163,10 +166,11 @@ V1 의 "운영자가 친구 카드를 일일이 채우는 1인 CRM" 결은 폐�
 
 #### 3.4.2 비교 뷰 (`/compare?a=&b=`) 확장
 - V1 그대로 + 신규 섹션:
-  - **메타데이터 비교** (V1 같음·다름 색상 단서)
+  - **메타데이터 비교** (V1 같음·다름 색상 단서) — V2 (009) 부터 흡연·음주·결혼관·문신 4 항목 같이 표시
   - **이상형 매칭 — 양방향** (신규):
     - "민수의 이상형 ↔ 지영의 프로필" 색상 단서 (✅ same / ⚠️ partial / ❌ different / · neutral)
     - "지영의 이상형 ↔ 민수의 프로필" 같이 양방향
+    - V2 (009) 부터 흡연·음주·결혼관·문신 4 항목도 양방향 매칭 활성 (이상형 enum ↔ 본인 enum 매트릭스 — `compareSelfTrait`)
     - 성격 키워드 교집합 시각화 / 자유 텍스트 나란히
   - **표준 설문 답변 비교** (V1 그대로, 접기/펼치기)
   - **Pair 메모 / 큐피드** (V1 그대로)
@@ -227,6 +231,12 @@ friends
 ├─ instagram text                       -- 권장
 ├─ relationship_status enum             -- 권장
 ├─ match_interest enum                  -- 권장
+│
+│  -- 자기 보고 4 항목 (009 — 이상형 매칭 대칭). 모두 권장 / nullable.
+├─ smoking text                         -- ('non_smoker','occasional','regular')
+├─ drinking text                        -- ('non_drinker','sometimes','often')
+├─ marriage_view text                   -- ('within_2y','over_3y','dating_focus')
+├─ tattoo text                          -- ('none','small','large')
 │
 ├─ recommender_name text NOT NULL       -- 추천인 이름 (신규 필수)
 ├─ recommender_relation text NOT NULL   -- "대학 동기" 등 (신규 필수)
@@ -325,7 +335,6 @@ survey_answers
 ### 5.1 가입자 측 라우트
 | URL | 인증 | 설명 |
 |---|---|---|
-| `/signup` | 비로그인 OK | Google OAuth 가입 진입 |
 | `/onboarding/profile` | 가입자, friends row 없음 | Step 1 (필수) |
 | `/onboarding/preferences` | 가입자, onboarding_step=2 | Step 2 (선택) |
 | `/onboarding/survey` | 가입자, onboarding_step=3 | Step 3 (선택) |
@@ -349,7 +358,7 @@ survey_answers
 | `/settings` | 운영자 | 설정 |
 
 ### 5.3 인증 공용
-- `/login` — 운영자용 (Google OAuth)
+- `/login` — **운영자·가입자 공용** Google OAuth 단일 진입점 (010-v2-unified-login)
 - `/auth/callback` — OAuth 콜백 (운영자·가입자 공용)
 - `/auth/signout` — 로그아웃
 
@@ -365,13 +374,13 @@ survey_answers
 
 ```
 OAuth 인증 X
-  → /signup, /login, /pending, /rejected, /auth/* 만 접근 가능
-  → 그 외 라우트는 /login 또는 /signup 으로 리다이렉트
+  → /login, /pending, /rejected, /auth/* 만 접근 가능
+  → 그 외 라우트 (운영자 / 가입자 / 폐기된 /signup) 는 모두 /login 으로 리다이렉트
 
 OAuth 인증 O
   ├─ OPERATOR_EMAIL 화이트리스트 통과
   │    → /(operator)/* 접근 가능
-  │    → /(operator)/* 외 라우트로 들어오면 / 로 리다이렉트
+  │    → /(operator)/* 외 라우트 (가입자 라우트 / 폐기된 /signup 등) 로 들어오면 / 로 리다이렉트
   │
   └─ 화이트리스트 미통과 (= 가입자)
        ├─ friends row 없음
@@ -383,6 +392,9 @@ OAuth 인증 O
        └─ friends.status = 'approved'
             → /me/* 정상 접근 가능
 ```
+
+010-v2-unified-login 이후 `/signup` 라우트는 폐기됐고 가드가 진입 시 `/login` (비로그인) /
+`/` (운영자) 로 흡수한다 — 외부 링크/북마크 호환을 위한 가드 단의 한 hop redirect.
 
 ---
 
@@ -547,7 +559,7 @@ V2 추가 non-goal (V2.x / V3 검토):
 - [ ] 가입자가 본인 friends row 외 접근 시도 시 차단됨
 
 ### 11-B. 가입·온보딩
-- [ ] `/signup` 진입 + Google OAuth + Step 1 필수 흐름 통과
+- [ ] `/login` 진입 + Google OAuth + Step 1 필수 흐름 통과 (010-v2-unified-login)
 - [ ] Step 2·3 skip 가능, 미입력 가입자 row 정상
 - [ ] 가입 도중 이탈 후 재진입 시 `onboarding_step` 으로 이어 풀기
 - [ ] Step 1 완료 시점에 `friends` row 생성 + `status='pending'`
@@ -609,7 +621,7 @@ V2 추가 non-goal (V2.x / V3 검토):
 - `surveys`, `survey_chapters`, `survey_questions`, `survey_answers` 관련 코드 (answers 키만 변경)
 
 ### 신규 (NEW)
-- `app/signup/page.tsx`
+- ~~`app/signup/page.tsx`~~ — 010-v2-unified-login 에서 폐기, `/login` 단일 진입점으로 통합
 - `app/onboarding/{profile,preferences,survey}/page.tsx` + 클라이언트 컴포넌트
 - `app/me/page.tsx` (대시보드)
 - `app/me/{profile,preferences,survey}/page.tsx`
@@ -630,7 +642,7 @@ V1 → V2 는 단절적 전환이므로 분할 머지 시 중간 상태가 일�
 #### 내부 task 시퀀스 (각 task = 1 commit, Lead → worker 위임 순서)
 
 1. **Task-A**: 마이그레이션 + `lib/auth/user.ts` + `proxy.ts` 가드 (백엔드 기반)
-2. **Task-B**: `/signup` + `/onboarding/*` (가입 흐름)
+2. **Task-B**: `/signup` + `/onboarding/*` (가입 흐름) — `/signup` 는 추후 010 에서 `/login` 으로 통합
 3. **Task-C**: `/me/*` (자기 페이지)
 4. **Task-D**: 운영자 대시보드 위젯 + `/friends` sub-tab + `/friends/[id]` 확장
 5. **Task-E**: 비교 뷰 (`/compare`) 이상형 양방향 확장

@@ -26,7 +26,7 @@ export default async function OnboardingPreferencesPage() {
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user?.id) redirect("/signup");
+  if (!user?.id) redirect("/login");
 
   // friends row 조회 (자기 row)
   const service = createSupabaseServiceClient();

@@ -18,7 +18,7 @@ export async function finishOnboardingSurveyAction(): Promise<void> {
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user?.id) redirect("/signup");
+  if (!user?.id) redirect("/login");
   await ensureNotOperator();
 
   const service = createSupabaseServiceClient();

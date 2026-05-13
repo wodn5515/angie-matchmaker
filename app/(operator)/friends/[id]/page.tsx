@@ -19,7 +19,15 @@ import {
   MATCH_INTEREST_LABEL,
   FRIEND_STATUS_LABEL,
 } from "@/lib/types/domain";
-import { REGION_LABEL } from "@/lib/types/v2-options";
+import {
+  getRegionLabel,
+  getHometownLabel,
+  getJobLabel,
+  getSmokingLabel,
+  getDrinkingLabel,
+  getMarriageViewLabel,
+  getTattooLabel,
+} from "@/lib/types/v2-options";
 import { AnswerView } from "@/components/operator/answer-display";
 import { FriendIdealSection } from "@/components/operator/friend-ideal-section";
 import { ReviewActions } from "@/components/operator/review-actions";
@@ -80,10 +88,8 @@ export default async function FriendDetailPage({
             {GENDER_LABEL[friend.gender]} · 선호{" "}
             {PREFERRED_GENDER_LABEL[friend.preferred_gender]}
             {friend.birth_year ? ` · ${friend.birth_year}년생` : ""}
-            {friend.region
-              ? ` · 거주 ${REGION_LABEL[friend.region] ?? friend.region}`
-              : ""}
-            {friend.occupation ? ` · ${friend.occupation}` : ""}
+            {friend.region ? ` · 거주 ${getRegionLabel(friend.region)}` : ""}
+            {friend.occupation ? ` · ${getJobLabel(friend.occupation)}` : ""}
           </p>
           <p className="mt-1 text-[11px] text-[var(--color-fg-muted)]">
             추천: {friend.recommender_name || "(없음)"}
@@ -158,11 +164,7 @@ export default async function FriendDetailPage({
             />
             <Field
               label="출신 지역"
-              value={
-                friend.hometown
-                  ? REGION_LABEL[friend.hometown] ?? friend.hometown
-                  : "—"
-              }
+              value={friend.hometown ? getHometownLabel(friend.hometown) : "—"}
             />
             <Field
               label="연애 상태"
@@ -191,6 +193,27 @@ export default async function FriendDetailPage({
                   ? `${friend.recommender_name} (${friend.recommender_relation || "—"})`
                   : "—"
               }
+            />
+            {/* 자기 보고 4 항목 (009) — 이상형 매칭에 사용. 값 없으면 "—" */}
+            <Field
+              label="흡연"
+              value={friend.smoking ? getSmokingLabel(friend.smoking) : "—"}
+            />
+            <Field
+              label="음주"
+              value={friend.drinking ? getDrinkingLabel(friend.drinking) : "—"}
+            />
+            <Field
+              label="결혼관"
+              value={
+                friend.marriage_view
+                  ? getMarriageViewLabel(friend.marriage_view)
+                  : "—"
+              }
+            />
+            <Field
+              label="문신"
+              value={friend.tattoo ? getTattooLabel(friend.tattoo) : "—"}
             />
             <div className="sm:col-span-2 flex flex-wrap gap-1.5">
               {(friend.tags ?? []).map((t) => (
