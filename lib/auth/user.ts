@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceClient,
+} from "@/lib/supabase/server";
 
 /**
  * 가입자(Self-signup user) 세션 헬퍼.
@@ -83,7 +86,13 @@ async function fetchAuthAndOperatorStatus(): Promise<AuthAndOperatorStatus> {
 }
 
 async function loadOwnFriendRow(authUserId: string): Promise<FriendRow | null> {
-  const sb = await createSupabaseServerClient();
+  // RLS deny-all 정책 (D-001 §D2) — server cookies 클라이언트는 friends 테이블을
+  // 못 본다. proxy 가드(`lib/supabase/proxy.ts`) 는 service-role 로 friend row 를
+  // 가져오는데 user.ts 가 server client 를 쓰면 두 곳 결과가 어긋나서 무한 redirect
+  // 발생 (가드는 approved 로 /me pass, requireApprovedUser 는 friend null 로
+  // /onboarding/profile redirect → 가드 다시 /me → ... 무한). service-role 로
+  // 통일해 가드와 정합.
+  const sb = createSupabaseServiceClient();
   const { data } = await sb
     .from("friends")
     .select("id, auth_user_id, status, onboarding_step")
