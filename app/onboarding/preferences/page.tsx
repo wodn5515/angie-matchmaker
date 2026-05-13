@@ -7,6 +7,10 @@ import {
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
 import { getFriendIdealAggregate } from "@/lib/db/ideals";
+import type {
+  RegionDetailValue,
+  HometownDetailValue,
+} from "@/lib/types/v2-options";
 import { PreferencesForm } from "./preferences-form";
 import {
   submitOnboardingPreferencesAction,
@@ -48,12 +52,14 @@ export default async function OnboardingPreferencesPage() {
     marriage_timing: ideals.ideals?.marriage_timing ?? "any",
     tattoo: ideals.ideals?.tattoo ?? "any",
     free_text: ideals.ideals?.free_text ?? "",
-    // 012 — DB 객체 키 (region_detail/hometown_detail) → 폼 키 (detail) 매핑.
-    regions: ideals.regions.map((r) => ({
+    // 012 — DB 객체 키 (region_detail/hometown_detail) → 폼 키 (RegionDetailValue
+    // / HometownDetailValue) 매핑. 구조는 동일 (광역 사전 공유) 이지만 alias 로
+    // 거주/출신 의미 분리.
+    regions: ideals.regions.map<RegionDetailValue>((r) => ({
       region: r.region,
       detail: r.region_detail,
     })),
-    hometowns: ideals.hometowns.map((h) => ({
+    hometowns: ideals.hometowns.map<HometownDetailValue>((h) => ({
       region: h.hometown,
       detail: h.hometown_detail,
     })),

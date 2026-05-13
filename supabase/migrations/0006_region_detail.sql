@@ -154,13 +154,11 @@ begin
       using p_friend_id;
   end loop;
 
-  -- 1:N regions — "region|detail" 결합 분해 (012 §D2)
+  -- 1:N regions — "region|detail" 결합 분해 (012 §D2).
+  -- split_part 는 누락 인덱스에서 이미 '' 반환하므로 coalesce/nullif 래퍼 불필요.
   if p_regions is not null and array_length(p_regions, 1) is not null then
     insert into friend_ideal_regions (friend_id, region, region_detail)
-    select
-      p_friend_id,
-      split_part(x, '|', 1),
-      coalesce(nullif(split_part(x, '|', 2), ''), '')
+    select p_friend_id, split_part(x, '|', 1), split_part(x, '|', 2)
     from unnest(p_regions) as t(x)
     where split_part(x, '|', 1) <> ''
     on conflict (friend_id, region, region_detail) do nothing;
@@ -169,10 +167,7 @@ begin
   -- 1:N hometowns — 동일 패턴
   if p_hometowns is not null and array_length(p_hometowns, 1) is not null then
     insert into friend_ideal_hometowns (friend_id, hometown, hometown_detail)
-    select
-      p_friend_id,
-      split_part(x, '|', 1),
-      coalesce(nullif(split_part(x, '|', 2), ''), '')
+    select p_friend_id, split_part(x, '|', 1), split_part(x, '|', 2)
     from unnest(p_hometowns) as t(x)
     where split_part(x, '|', 1) <> ''
     on conflict (friend_id, hometown, hometown_detail) do nothing;

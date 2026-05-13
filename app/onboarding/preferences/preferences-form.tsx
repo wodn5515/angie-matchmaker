@@ -19,6 +19,7 @@ import {
   BIRTH_YEAR_MIN,
   BIRTH_YEAR_MAX,
   type RegionDetailValue,
+  type HometownDetailValue,
 } from "@/lib/types/v2-options";
 
 /**
@@ -39,9 +40,10 @@ import {
 export type PreferencesFormDefaults = Partial<{
   age_from: number;
   age_to: number;
-  /** 012 — 2단계 region (광역+detail) 객체 배열. detail '' = 광역 전체. */
+  /** 012 — 2단계 광역+detail 객체 배열. detail '' = 광역 전체. */
   regions: RegionDetailValue[];
-  hometowns: RegionDetailValue[];
+  /** 012 — hometown 도 구조는 같음 (alias 로 의미만 분리). */
+  hometowns: HometownDetailValue[];
   hometown_same_bonus: boolean;
   smoking: string;
   drinking: string;
@@ -72,7 +74,7 @@ export function PreferencesForm({
   const [regions, setRegions] = React.useState<RegionDetailValue[]>(
     defaultValues?.regions ?? [],
   );
-  const [hometowns, setHometowns] = React.useState<RegionDetailValue[]>(
+  const [hometowns, setHometowns] = React.useState<HometownDetailValue[]>(
     defaultValues?.hometowns ?? [],
   );
   const [hometownSameBonus, setHometownSameBonus] = React.useState(

@@ -5,6 +5,23 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireOperator } from "@/lib/auth/operator";
 import { deleteFriend, updateFriend } from "@/lib/db/friends";
+import {
+  REGION_OPTIONS,
+  REGION_DETAIL_OPTIONS,
+  type RegionCode,
+} from "@/lib/types/v2-options";
+
+// 012 nit #3 — server-side enum 검증 (defense-in-depth) — lib/validation/profile.ts
+// 의 동일 패턴을 운영자 측에서도 반복.
+const VALID_REGION_CODES: ReadonlySet<string> = new Set(
+  REGION_OPTIONS.map((o) => o.value),
+);
+
+function isValidDetailFor(region: string, detail: string): boolean {
+  const arr = REGION_DETAIL_OPTIONS[region as RegionCode];
+  if (!arr) return false;
+  return arr.some((d) => d.value === detail);
+}
 
 /**
  * V2 운영자가 가입자 정보 수정 / 삭제할 때 쓰는 Server Action.
@@ -122,12 +139,36 @@ const FriendUpdateSchema = z.object({
     .or(z.literal(""))
     .optional()
     .transform((v) => (v === "" || v == null ? null : v)),
-}).transform((data) => {
-  // 012 §D1 CHECK 정합 — region 없이 detail 만 있는 경우 detail 을 null 로 정규화.
+}).transform((data, ctx) => {
+  // 012 §D1 CHECK 정합 + nit #3 enum 검증.
+  if (data.region && !VALID_REGION_CODES.has(data.region)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["region"],
+      message: "알 수 없는 거주지역 코드입니다",
+    });
+  }
+  if (data.hometown && !VALID_REGION_CODES.has(data.hometown)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["hometown"],
+      message: "알 수 없는 출신지역 코드입니다",
+    });
+  }
+  const region_detail =
+    data.region && data.region_detail && isValidDetailFor(data.region, data.region_detail)
+      ? data.region_detail
+      : null;
+  const hometown_detail =
+    data.hometown &&
+    data.hometown_detail &&
+    isValidDetailFor(data.hometown, data.hometown_detail)
+      ? data.hometown_detail
+      : null;
   return {
     ...data,
-    region_detail: data.region ? data.region_detail : null,
-    hometown_detail: data.hometown ? data.hometown_detail : null,
+    region_detail: data.region ? region_detail : null,
+    hometown_detail: data.hometown ? hometown_detail : null,
   };
 });
 

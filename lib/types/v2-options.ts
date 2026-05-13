@@ -85,8 +85,22 @@ export type RegionCode = (typeof REGION_OPTIONS)[number]["value"];
 //   행정안전부 시군구 목록 기준 (2026-05).
 // ─────────────────────────────────────────────────────────────
 
-/** region+detail 결합 값 — 이상형 다중 선호 / 본인 cascade 모두 공유. */
+/**
+ * region+detail 결합 값 — 광역 코드 + 구·시 detail.
+ *
+ * region/hometown 둘 다 같은 사전(`REGION_OPTIONS` / `REGION_DETAIL_OPTIONS`) 을
+ * 공유하므로 본 구조도 둘 다 동일하게 사용한다. 의미 분리는
+ * `HometownDetailValue` 별 alias 로 표현.
+ */
 export type RegionDetailValue = { region: string; detail: string };
+
+/**
+ * 012 — hometown 용 alias. 구조는 RegionDetailValue 와 동일 (광역 사전 공유) 이지만
+ * 호출처에서 "거주지" 와 "출신지" 의미를 분리해 표기할 수 있게 별 이름.
+ * `ideals.hometowns.map((h) => ({ region: h.hometown, detail: h.hometown_detail }))`
+ * 같은 매핑이 자연스럽게 `HometownDetailValue` 형식임을 명확히 드러낸다.
+ */
+export type HometownDetailValue = RegionDetailValue;
 
 export const REGION_DETAIL_OPTIONS: Record<
   RegionCode,

@@ -1,4 +1,25 @@
 import { z } from "zod";
+import {
+  REGION_OPTIONS,
+  REGION_DETAIL_OPTIONS,
+  type RegionCode,
+} from "@/lib/types/v2-options";
+
+/**
+ * 012 nit #3 — server-side enum 검증 (defense-in-depth).
+ * 클라이언트 폼이 정상 사전을 쓰면 자연 통과. raw POST 로 사전 외 값이 들어와도
+ * 정합 복원 (region 자체는 reject — 의미 없는 광역 코드는 거부 안전, detail 은
+ * normalize — 알 수 없는 detail 은 '광역만' 으로 떨어뜨려 silent fallback).
+ */
+const VALID_REGION_CODES: ReadonlySet<string> = new Set(
+  REGION_OPTIONS.map((o) => o.value),
+);
+
+function isValidDetailFor(region: string, detail: string): boolean {
+  const arr = REGION_DETAIL_OPTIONS[region as RegionCode];
+  if (!arr) return false;
+  return arr.some((d) => d.value === detail);
+}
 
 /**
  * 가입자 프로필 (V2 friends.* 일부) 유효성 검증 스키마.
@@ -105,25 +126,47 @@ export const ProfileObjectSchema = z.object({
 });
 
 /**
- * 012 §D1 CHECK 정합 — region 없이 detail 만 있는 경우 detail 을 null 로 정규화.
- * (운영자/가입자 폼에서 region 을 지웠을 때 detail 가 stale 로 남는 사고 방지.)
+ * 012 §D1 CHECK 정합 + nit #3 server-side enum 검증.
+ *
+ * - region 자체가 사전 외 값이면 zod issue 추가 (reject).
+ * - region_detail 가 그 region 의 사전 외 값이면 null 로 normalize.
+ * - region 없이 detail 만 있는 경우 detail 을 null 로 정규화 (D1 CHECK 정합).
+ * - hometown / hometown_detail 도 동일 패턴.
  */
-function normalizeRegionDetail<
-  T extends {
-    region: string | null;
-    region_detail: string | null;
-    hometown: string | null;
-    hometown_detail: string | null;
-  },
->(data: T): T {
+export const ProfileSchema = ProfileObjectSchema.transform((data, ctx) => {
+  if (data.region && !VALID_REGION_CODES.has(data.region)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["region"],
+      message: "알 수 없는 거주지역 코드입니다",
+    });
+  }
+  if (data.hometown && !VALID_REGION_CODES.has(data.hometown)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["hometown"],
+      message: "알 수 없는 출신지역 코드입니다",
+    });
+  }
+
+  const region_detail =
+    data.region && data.region_detail && isValidDetailFor(data.region, data.region_detail)
+      ? data.region_detail
+      : null;
+  const hometown_detail =
+    data.hometown &&
+    data.hometown_detail &&
+    isValidDetailFor(data.hometown, data.hometown_detail)
+      ? data.hometown_detail
+      : null;
+
   return {
     ...data,
-    region_detail: data.region ? data.region_detail : null,
-    hometown_detail: data.hometown ? data.hometown_detail : null,
+    // D1 CHECK 정합 — region 없으면 detail 도 null.
+    region_detail: data.region ? region_detail : null,
+    hometown_detail: data.hometown ? hometown_detail : null,
   };
-}
-
-export const ProfileSchema = ProfileObjectSchema.transform(normalizeRegionDetail);
+});
 
 export type ProfileInput = z.infer<typeof ProfileSchema>;
 
@@ -194,6 +237,11 @@ export const PreferencesSchema = z.object({
  *   spec 의 두 정책 (reject vs normalize) 중 normalize 채택 — 사용자 입력 보존.
  * - "seoul|" → { region: "seoul", detail: "" }
  * - "seoul|gangnam-gu" → { region: "seoul", detail: "gangnam-gu" }
+ *
+ * 012 nit #3 — server-side enum 검증 (defense-in-depth):
+ *  - region 이 REGION_OPTIONS 외 값이면 그 행 폐기 (raw POST 방어).
+ *  - detail 이 해당 region 의 사전 외 값이면 detail '' 로 normalize (광역 전체로
+ *    fallback). silent — UI 가 정상 사전을 쓰면 자연 통과.
  */
 function parseRegionDetailList(
   values: FormDataEntryValue[],
@@ -206,7 +254,10 @@ function parseRegionDetailList(
     const region = (idx === -1 ? str : str.slice(0, idx)).trim();
     const detail = (idx === -1 ? "" : str.slice(idx + 1)).trim();
     if (!region) continue;
-    out.push({ region, detail });
+    if (!VALID_REGION_CODES.has(region)) continue;
+    const safeDetail =
+      detail === "" || isValidDetailFor(region, detail) ? detail : "";
+    out.push({ region, detail: safeDetail });
   }
   return out;
 }
