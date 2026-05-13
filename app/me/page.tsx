@@ -80,7 +80,7 @@ export default async function MePage() {
             tone="approved"
             icon="✅"
             title="승인됨 — 매칭 풀에 합류했어요"
-            description="운영자가 잘 어울리는 분을 찾으면 카톡으로 알려드려요."
+            description="운영자가 잘 어울리는 분을 찾으면 직접 안내드려요."
           />
         </header>
 
@@ -137,8 +137,8 @@ export default async function MePage() {
 
         <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 px-4 py-3 text-[12px] text-[var(--color-fg-muted)]">
           <p>
-            매칭은 운영자가 카톡으로 직접 안내해요. 사이트에서 따로 알림이 가지
-            않으니 카톡을 확인해주세요.
+            매칭은 운영자가 직접 안내해요. 사이트에는 따로 표시되지 않으니
+            안내를 기다려주세요.
           </p>
         </section>
 
