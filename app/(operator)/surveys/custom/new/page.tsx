@@ -3,7 +3,7 @@ import { requireOperator } from "@/lib/auth/operator";
 import { listFriends } from "@/lib/db/friends";
 import { CustomSurveyForm } from "./form";
 
-export const metadata = { title: "커스텀 설문 — matchmaker" };
+export const metadata = { title: "커스텀 테스트 — matchmaker" };
 
 export default async function NewCustomSurveyPage() {
   const session = await requireOperator();
@@ -14,12 +14,12 @@ export default async function NewCustomSurveyPage() {
       <div>
         <p className="text-xs text-[var(--color-fg-muted)]">
           <Link href="/surveys" className="hover:text-fg">
-            설문
+            연애 성향 테스트
           </Link>
           <span className="mx-1">/</span> 커스텀 / 새로 만들기
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          새 커스텀 설문
+          새 커스텀 테스트
         </h1>
         <p className="mt-1 text-xs text-[var(--color-fg-muted)]">
           제목과 대상을 정하면 챕터/문항을 추가할 수 있는 편집 화면으로 넘어갑니다.

@@ -13,8 +13,8 @@ import { saveMeAnswerAction, finishSurveyAction } from "../actions";
  * V1 의 `/s/[token]/[chapter]` 의 자동저장 UX 를 OAuth 진입으로 이식.
  * 차이:
  *   - token 대신 세션 기반 (server action 안에서 friendId 결정)
- *   - 마지막 챕터 완료 시 `finishSurveyAction()` 호출 → 온보딩 중이면 /pending,
- *     이미 승인된 가입자면 /me 로 이동
+ *   - 마지막 챕터 완료 시 `finishSurveyAction()` 호출 → 온보딩 중이면 /me (심사 대기
+ *     배너 노출, 013 §D1), 이미 승인된 가입자면 /me 로 이동
  *   - "제출" 개념 없음 — 자동 저장만, 단순히 "마지막 챕터까지 완료" 시 redirect
  */
 type Props = {

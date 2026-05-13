@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 /**
- * V2 설문 하위 탭. V1 의 "발송" / "이력" 탭은 폐기 (decisions/004 — 토큰 흐름 사라짐).
+ * V2 연애 성향 테스트 하위 탭. V1 의 "발송" / "이력" 탭은 폐기 (decisions/004 — 토큰 흐름 사라짐).
  * 템플릿 (표준 + 커스텀) 만 남는다.
  */
 const TABS = [
@@ -23,7 +23,7 @@ export function SurveysTabs() {
   const pathname = usePathname() ?? "";
   return (
     <nav
-      aria-label="설문 하위 메뉴"
+      aria-label="연애 성향 테스트 하위 메뉴"
       className="border-b border-[var(--color-border)] -mx-4 px-4 mb-2"
     >
       <ul className="flex gap-1 overflow-x-auto scrollbar-thin">

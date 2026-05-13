@@ -287,7 +287,7 @@ export default async function FriendDetailPage({
         <CardBody className="p-0">
           {answers.length === 0 ? (
             <p className="px-5 py-8 text-center text-xs text-[var(--color-fg-muted)]">
-              아직 설문 응답이 없어요.
+              아직 연애 성향 테스트 응답이 없어요.
             </p>
           ) : (
             <div className="space-y-3 px-5 py-4">

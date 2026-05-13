@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * V2 `/me/survey` — 연애 성향 테스트 진입 / 재진입.
- * PRD §3.3.4 — V1 표준 설문 시스템 재활용 (토큰 진입 → OAuth 진입).
+ * PRD §3.3.4 — V1 표준 테스트 시스템 재활용 (토큰 진입 → OAuth 진입).
  *
  * 가입자가 본인 답변을 수정 가능 (1회용 제약 폐기).
  */
@@ -98,7 +98,7 @@ export default async function MeSurveyPage() {
             </Link>
           ) : (
             <p className="text-center text-xs text-[var(--color-fg-muted)]">
-              아직 준비된 설문이 없어요.
+              아직 준비된 연애 성향 테스트가 없어요.
             </p>
           )}
         </div>

@@ -31,8 +31,8 @@ export async function ensureStandardSurvey(ownerId: string): Promise<Survey> {
     .insert({
       owner_id: ownerId,
       type: "standard",
-      title: "표준 설문",
-      description: "모든 친구에게 보내는 기본 설문입니다.",
+      title: "표준 연애 성향 테스트",
+      description: "모든 가입자에게 보내는 기본 연애 성향 테스트입니다.",
       is_active: true,
     })
     .select("*")
