@@ -137,10 +137,15 @@ begin
 end;
 $$;
 
--- defense in depth — Supabase 의 public schema 신규 function 은 anon/authenticated
--- 에게 기본 EXECUTE 가 부여된다. 실제 데이터 변경은 RLS deny-all 이 INSERT 단계에서
--- 막아 안전하지만, RPC POST 자체를 차단해 트랜잭션 진입 비용도 절약한다.
+-- defense in depth — Supabase 의 public schema 신규 function 은 PUBLIC role group
+-- (모든 role 묵시적 멤버) + anon/authenticated (Supabase 의 ALTER DEFAULT PRIVILEGES
+-- 으로 명시 grant) 양쪽으로 EXECUTE 가 부여된다. PUBLIC 묵시적 grant 를 안 풀면
+-- anon/authenticated 는 PUBLIC 멤버 자격으로 여전히 EXECUTE 가능 — `public` 까지
+-- 함께 revoke 해야 의도된 차단. service_role 은 별도 명시 grant 라 영향 없음.
+--
+-- 실제 데이터 변경은 RLS deny-all 이 INSERT 단계에서 막아 안전하지만, RPC POST
+-- 자체를 차단해 트랜잭션 진입 비용도 절약한다.
 revoke execute on function upsert_friend_ideal_aggregate(
   uuid, smallint, smallint, boolean, text, text, text, text, text,
   text[], text[], text[], text[], text[]
-) from anon, authenticated;
+) from public, anon, authenticated;
