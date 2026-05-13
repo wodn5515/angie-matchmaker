@@ -40,6 +40,13 @@ export async function deleteMeAccountAction(formData: FormData): Promise<void> {
   const confirmName = ConfirmNameSchema.parse(formData.get("confirmName"));
 
   // 4. 본인 friends row 의 name 과 case-sensitive 정확 일치 검증.
+  //    `friend.name` 은 정상 흐름에서 ProfileSchema 가 trim 해 저장하지만, 외부
+  //    작업(운영자 콘솔 / DB 직접 편집)으로 trailing space 가 섞일 가능성을 방어 —
+  //    가입자가 본인 이름을 정확히 입력했는데 trailing space 때문에 거절되는 함정
+  //    회피. case-sensitive 정신은 그대로 (trim 만 추가).
+  //
+  //    `sb` 한 인스턴스로 friends select + auth.admin.deleteUser 두 채널 모두 사용 —
+  //    admin API 는 secret(service-role) key 권한 필요. 본 클라이언트는 RLS bypass.
   const sb = createSupabaseServiceClient();
   const { data: friend } = await sb
     .from("friends")
@@ -47,14 +54,12 @@ export async function deleteMeAccountAction(formData: FormData): Promise<void> {
     .eq("id", session.friendId)
     .single();
 
-  if (!friend || friend.name !== confirmName) {
+  if (!friend || (friend.name ?? "").trim() !== confirmName) {
     throw new Error("입력한 이름이 본인 이름과 일치하지 않습니다");
   }
 
   // 5. auth.users 삭제 → cascade 로 friends + 자식 6 테이블 모두 자동 정리.
-  //    admin API 는 secret(service-role) key 권한 필요. 본 클라이언트는 RLS bypass.
-  const adminSb = createSupabaseServiceClient();
-  const { error } = await adminSb.auth.admin.deleteUser(session.authUserId);
+  const { error } = await sb.auth.admin.deleteUser(session.authUserId);
   if (error) throw error;
 
   // 6. 자가 탈퇴 안내 — /login?deleted=1 으로 redirect (Next 의 redirect 는 throw).
