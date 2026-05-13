@@ -18,7 +18,7 @@ export default async function MeProfilePage() {
   const { data: friend } = await service
     .from("friends")
     .select(
-      "name, gender, preferred_gender, recommender_name, recommender_relation, birth_year, region, hometown, occupation, instagram, relationship_status, match_interest",
+      "name, gender, preferred_gender, recommender_name, recommender_relation, birth_year, region, hometown, occupation, instagram, relationship_status, match_interest, smoking, drinking, marriage_view, tattoo",
     )
     .eq("id", session.friendId)
     .single();

@@ -141,9 +141,10 @@ export async function deleteFriend(
 /**
  * 가입자 프로필 완성도 (0..100).
  *
- * V2: 필수(이름·성별·선호 성별·추천인 2) = 항상 6점 기본.
- *     권장 7 (birth_year/region/hometown/occupation/instagram/relationship_status/match_interest)
- *     each 채워질 때마다 거의 동일 비중. 운영자 메모(tags/notes) 는 보너스.
+ * V2: 필수(이름·성별·선호 성별·추천인 2) = 항상 30점 기본.
+ *     권장 11 (birth_year/region/hometown/occupation/instagram/relationship_status/
+ *     match_interest/smoking/drinking/marriage_view/tattoo) each 채워질 때마다
+ *     거의 동일 비중 (50점 만점). 운영자 메모(tags/notes) 는 보너스 (20점).
  */
 export function profileCompletion(f: Friend): number {
   // Required base (모든 V2 가입자는 통과해서 row 가 만들어졌으므로 30점 기본)
@@ -156,6 +157,10 @@ export function profileCompletion(f: Friend): number {
     !!f.instagram,
     f.relationship_status != null,
     f.match_interest != null,
+    !!f.smoking,
+    !!f.drinking,
+    !!f.marriage_view,
+    !!f.tattoo,
   ];
   score += Math.round(
     (tier2Items.filter(Boolean).length / tier2Items.length) * 50,
