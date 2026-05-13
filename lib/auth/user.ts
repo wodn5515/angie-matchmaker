@@ -125,17 +125,19 @@ export async function getCurrentUser(): Promise<UserSession | null> {
  *
  * - 비로그인 → /signup (010 §D1 후엔 proxy 가드가 `/signup` → `/login` 자동 변환)
  * - friends row 없음 → /onboarding/profile
- * - status='pending' → /pending
+ * - status='pending' → /pending (013 §D1 후엔 proxy 가드가 `/pending` → 상태별 흡수)
  * - status='rejected' → /rejected
  *
- * 010-v2-unified-login: `/signup` 페이지는 폐기됐지만, 이 헬퍼의 redirect 시그니처는
- * `tests/unit/auth-user.test.ts` spec 호환을 위해 `/signup` 그대로 둔다. 실제 사용자
- * 경험은 proxy 가드가 `/signup` → `/login` 으로 한 hop 더 흡수한다 (가드 spec 통과).
+ * 010-v2-unified-login / 013-pending-deprecation: `/signup`·`/pending` 페이지는
+ * 폐기됐지만, 이 헬퍼의 redirect 시그니처는 `tests/unit/auth-user.test.ts` spec
+ * 호환을 위해 그대로 둔다. 실제 사용자 경험은 proxy 가드가 한 hop 더 흡수
+ * (`/signup` → `/login` / `/pending` → pending+null 이면 `/me` 등 — 가드 spec 통과).
  *
  * @deprecated 011 §D2 — pending(step=null) 가입자도 `/me/*` 진입을 허용하면서
  * 새 헬퍼 `requireOnboardedUser()` 로 이전. 신규 호출처는 그 함수를 사용하고,
  * 본 함수는 외부 spec(`tests/unit/auth-user.test.ts`) 호환을 위해 시그니처 보존.
- * 호출처가 모두 마이그레이션되면 제거 예정.
+ * 운영 호출처가 모두 마이그레이션되면 제거 예정 (현재 운영 호출처 0건 — auth-user.test.ts
+ * 시그니처 잠금만 남음).
  */
 export async function requireApprovedUser(): Promise<UserSession> {
   const { authUser } = await fetchAuthAndOperatorStatus();
