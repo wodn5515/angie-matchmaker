@@ -90,7 +90,7 @@ export default async function FriendsPage({
         counts.all === 0 ? (
           <EmptyState
             title="아직 가입자가 없어요"
-            description="가입 페이지 링크(/signup) 를 지인에게 공유해보세요. Google 로그인으로 누구나 가입할 수 있어요."
+            description="가입 페이지 링크(/login) 를 지인에게 공유해보세요. Google 로그인으로 누구나 가입할 수 있어요."
           />
         ) : (
           <EmptyState title="조건에 맞는 가입자가 없어요" />

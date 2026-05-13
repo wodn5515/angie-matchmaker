@@ -21,7 +21,7 @@ export default async function OnboardingSurveyPage() {
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user?.id) redirect("/signup");
+  if (!user?.id) redirect("/login");
 
   // 표준 설문 ensure (운영자 측 active standard 가 없다면 자동 생성)
   const standard = await ensureStandardSurvey(SITE_OWNER_ID);

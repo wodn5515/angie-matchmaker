@@ -113,10 +113,14 @@ export async function getCurrentUser(): Promise<UserSession | null> {
 /**
  * status='approved' 가입자만 통과. 다른 상태면 적절한 라우트로 redirect.
  *
- * - 비로그인 → /signup
+ * - 비로그인 → /signup (010 §D1 후엔 proxy 가드가 `/signup` → `/login` 자동 변환)
  * - friends row 없음 → /onboarding/profile
  * - status='pending' → /pending
  * - status='rejected' → /rejected
+ *
+ * 010-v2-unified-login: `/signup` 페이지는 폐기됐지만, 이 헬퍼의 redirect 시그니처는
+ * `tests/unit/auth-user.test.ts` spec 호환을 위해 `/signup` 그대로 둔다. 실제 사용자
+ * 경험은 proxy 가드가 `/signup` → `/login` 으로 한 hop 더 흡수한다 (가드 spec 통과).
  */
 export async function requireApprovedUser(): Promise<UserSession> {
   const { authUser } = await fetchAuthAndOperatorStatus();

@@ -22,7 +22,7 @@ export async function submitOnboardingPreferencesAction(
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user?.id) redirect("/signup");
+  if (!user?.id) redirect("/login");
   await ensureNotOperator();
 
   const service = createSupabaseServiceClient();
@@ -61,7 +61,7 @@ export async function skipOnboardingPreferencesAction(): Promise<void> {
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user?.id) redirect("/signup");
+  if (!user?.id) redirect("/login");
   await ensureNotOperator();
 
   const service = createSupabaseServiceClient();

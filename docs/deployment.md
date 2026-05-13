@@ -114,8 +114,8 @@ npm install
 npm run dev
 ```
 
-- 운영자: `http://localhost:3000/login` → "Google 계정으로 로그인" → 화이트리스트 Gmail 진입 → `/` 대시보드.
-- 가입자: `http://localhost:3000/signup` → "Google 로 가입하기" → 화이트리스트 외 Gmail → `/onboarding/profile` (Step 1 진행).
+- 운영자 / 가입자 모두: `http://localhost:3000/login` → "Google 로 시작" → 화이트리스트 통과 시 `/` 대시보드, 그 외 신규는 `/onboarding/profile` (Step 1 진행).
+  - 010-v2-unified-login 이후 `/signup` 은 폐기됐고 `/login` 단일 진입점으로 통합.
 
 운영자 / 가입자 분기는 `OPERATOR_EMAIL` 화이트리스트 + `friends.status` 매트릭스에 따라 `lib/auth/guard.ts` 의 `resolveGuardTarget` 가 라우팅한다 (PRD §5.5).
 
@@ -174,7 +174,7 @@ git push -u origin main
 운영자가 첫 사용 전에 해두면 좋은 것:
 
 - [ ] `/surveys/standard` 에서 챕터 1개 이상 + 문항 만들기 (가입자 측 `/onboarding/survey` · `/me/survey` 가 표시할 내용)
-- [ ] 본인이 별도 Gmail 로 `/signup` 진입 → Step 1 완료 → 운영자 측 `/friends/[id]` 에서 승인 → 다시 가입자 측 `/me` 진입까지 동작 확인
+- [ ] 본인이 별도 Gmail 로 `/login` 진입 → Step 1 완료 → 운영자 측 `/friends/[id]` 에서 승인 → 다시 가입자 측 `/me` 진입까지 동작 확인
 - [ ] `/compare?a=&b=` 두 가입자로 진입해 이상형 양방향 매칭 색상 단서 + 표준 설문 비교 동작 확인
 
 ---

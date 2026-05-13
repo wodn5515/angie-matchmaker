@@ -22,7 +22,7 @@ export async function submitOnboardingProfileAction(
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user?.id) redirect("/signup");
+  if (!user?.id) redirect("/login");
 
   // 운영자 우회 차단
   await ensureNotOperator();
