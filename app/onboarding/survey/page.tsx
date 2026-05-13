@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * V2 온보딩 Step 3 (선택 — skip 가능).
- * PRD §3.1.2 + §3.3.4 — 연애 성향 테스트 (V1 표준 설문 시스템 재활용).
+ * PRD §3.1.2 + §3.3.4 — 연애 성향 테스트 (V1 표준 테스트 시스템 재활용).
  *
  * 챕터 runner 자체는 `/me/survey` 라우트가 담당. 여기서는 진입 / skip 카드만.
  */
@@ -23,7 +23,7 @@ export default async function OnboardingSurveyPage() {
   } = await sb.auth.getUser();
   if (!user?.id) redirect("/login");
 
-  // 표준 설문 ensure (운영자 측 active standard 가 없다면 자동 생성)
+  // 표준 연애 성향 테스트 ensure (운영자 측 active standard 가 없다면 자동 생성)
   const standard = await ensureStandardSurvey(SITE_OWNER_ID);
   const chapters = await listChapters(standard.id);
   const firstChapter = chapters[0]?.id;
@@ -58,7 +58,7 @@ export default async function OnboardingSurveyPage() {
             </Link>
           ) : (
             <p className="text-center text-xs text-[var(--color-fg-muted)]">
-              아직 준비된 설문이 없어요. 운영자에게 문의해주세요.
+              아직 준비된 연애 성향 테스트가 없어요. 운영자에게 문의해주세요.
             </p>
           )}
           <form action={skipOnboardingSurveyAction}>

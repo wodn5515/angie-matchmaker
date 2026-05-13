@@ -11,6 +11,13 @@
  *   - `PRE_AUTH_PUBLIC` 에서 `/signup` 제거 — `/login` 한 라우트만 공개
  *   - 폐기된 `/signup` path 진입 시 비로그인은 `/login`, 운영자는 `/` 로 흡수 (외부 링크 호환)
  *   - 비로그인이 가입자 라우트(/me, /onboarding) 진입 시 `/login` 으로 redirect (이전엔 `/signup`)
+ *
+ * 013-pending-deprecation: `/pending` 라우트 폐기 + `/me` 흡수.
+ *   - PENDING_PREFIX 는 announcement 분기에서 제거 — `/rejected` 만 announcement 자격 유지
+ *   - pending+null × `/pending`/`/onboarding/*`/그 외 → 모두 `/me` 로 흡수 (이전: pass / `/pending`)
+ *   - 비로그인 × `/pending` → `/login` 으로 흡수 (이전: pass — announcement 자격 박탈)
+ *   - rejected / approved / 운영자 × `/pending` 은 각 분기 fallback 으로 자연 흡수 (회귀 유지)
+ *   - `requireOnboardedUser` 의 resume fallback (`?? "/pending"`) 도 같은 PR 에서 `/me` 로 갱신
  */
 
 import {
@@ -40,9 +47,12 @@ export type GuardTarget =
 const AUTH_CALLBACK_PREFIX = "/auth";
 /** 010 §D1 — `/login` 단일 진입점 (이전: ["/signup", "/login"]). */
 const PRE_AUTH_PUBLIC = ["/login"];
-/** 010 §D1 — 폐기된 `/signup` 경로. 외부 링크/북마크 호환을 위해 흡수 처리. */
-const LEGACY_SIGNUP = "/signup";
-const PENDING_PREFIX = "/pending";
+/**
+ * 폐기된 V2.x 라우트 — 외부 링크/북마크 호환을 위해 가드 단에서 흡수.
+ *   - `/signup` (010 §D1) → 비로그인 `/login`, 운영자 `/`, 가입자는 각 상태 분기로
+ *   - `/pending` (013 §D1) → 동일 흡수 패턴
+ */
+const LEGACY_GONE_ROUTES = ["/signup", "/pending"];
 const REJECTED_PREFIX = "/rejected";
 const ONBOARDING_PREFIX = "/onboarding";
 const ME_PREFIX = "/me";
@@ -56,15 +66,19 @@ function isAnyOf(pathname: string, targets: string[]): boolean {
   return targets.some((t) => isPathOrPrefix(pathname, t));
 }
 
-function isLegacySignup(pathname: string): boolean {
-  return isPathOrPrefix(pathname, LEGACY_SIGNUP);
+function isLegacyGone(pathname: string): boolean {
+  return isAnyOf(pathname, LEGACY_GONE_ROUTES);
 }
 
+/**
+ * 비로그인 진입을 허용하는 안내(공개) 라우트.
+ *
+ * 013 §D1 — `/pending` 라우트 폐기. 이제 `/rejected` 만 비로그인 외부 링크 안내 자격.
+ * `/pending` 으로 들어온 비로그인은 통합 진입점 `/login` 으로 흡수된다 (다음 hop 으로
+ * 가드가 자연 재평가).
+ */
 function isAnnouncementRoute(pathname: string): boolean {
-  return (
-    isPathOrPrefix(pathname, PENDING_PREFIX) ||
-    isPathOrPrefix(pathname, REJECTED_PREFIX)
-  );
+  return isPathOrPrefix(pathname, REJECTED_PREFIX);
 }
 
 export function resolveGuardTarget(input: GuardInput): GuardTarget {
@@ -80,13 +94,14 @@ export function resolveGuardTarget(input: GuardInput): GuardTarget {
     if (isAnyOf(pathname, PRE_AUTH_PUBLIC)) return { type: "pass" };
     if (isAnnouncementRoute(pathname)) return { type: "pass" };
     // 010 §D1 — 가입자 라우트 / 운영자 라우트 / 폐기된 `/signup` 모두 통합 진입점 `/login` 으로.
+    // 013 §D1 — 폐기된 `/pending` 도 announcement 자격 박탈로 같은 분기 흡수.
     return { type: "redirect", to: "/login" };
   }
 
   // ── OAuth + 운영자 ──────────────────────────────────────
   if (isOperator) {
-    // 010 §D1 — 폐기된 `/signup` 진입은 운영자 대시보드 `/` 로 흡수.
-    if (isLegacySignup(pathname)) {
+    // 010 §D1 / 013 §D1 — 폐기된 `/signup`·`/pending` 진입은 운영자 대시보드 `/` 로 흡수.
+    if (isLegacyGone(pathname)) {
       return { type: "redirect", to: "/" };
     }
     // 가입자 라우트 / 안내 페이지 / 로그인 페이지 진입 → / (운영자 대시보드)
@@ -121,14 +136,15 @@ export function resolveGuardTarget(input: GuardInput): GuardTarget {
     // 온보딩 미완 (step != null) — /onboarding/* 진입은 자유 (이어풀기 또는 이전 단계 수정)
     if (friend.onboarding_step != null) {
       if (isPathOrPrefix(pathname, ONBOARDING_PREFIX)) return { type: "pass" };
-      const resumeTarget =
-        resolveOnboardingResumeTarget({ friend }) ?? "/pending";
+      // 013 §D1 — fallback `/pending` → `/me`. step=null 케이스 외엔 resolve 함수가
+      // 항상 string 을 반환하므로 fallback 발화는 사실상 방어용.
+      const resumeTarget = resolveOnboardingResumeTarget({ friend }) ?? "/me";
       return { type: "redirect", to: resumeTarget };
     }
     // 온보딩 완료 + 심사 대기 — 011 §D1 — /me/* 진입을 허용해 안내 ↔ 동작 mismatch 해소.
-    if (isPathOrPrefix(pathname, PENDING_PREFIX)) return { type: "pass" };
+    // 013 §D1 — `/pending` 라우트 폐기. PENDING_PREFIX pass 행 제거 + default fallback `/me`.
     if (isPathOrPrefix(pathname, ME_PREFIX)) return { type: "pass" };
-    return { type: "redirect", to: "/pending" };
+    return { type: "redirect", to: "/me" };
   }
 
   // status === "approved"

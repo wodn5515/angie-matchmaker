@@ -36,7 +36,7 @@ export function CustomSurveyForm({ friends }: { friends: Friend[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>설문 정보</CardTitle>
+        <CardTitle>테스트 정보</CardTitle>
       </CardHeader>
       <CardBody className="space-y-3">
         <div>

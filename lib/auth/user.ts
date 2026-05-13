@@ -162,8 +162,8 @@ export async function requireApprovedUser(): Promise<UserSession> {
  * (status='pending' + onboarding_step=null) 가입자만 통과.
  *
  * `requireApprovedUser` 와 다른 점: 온보딩을 마친 pending(심사 대기) 가입자에게도
- * `/me/*` 를 열어 안내(`/pending` 페이지) ↔ 동작 mismatch 를 해소한다. 가드만 풀고
- * 페이지 함수가 그대로면 무한 redirect 회귀 — 두 길을 함께 풀어야 한다 (011 §D2).
+ * `/me/*` 를 열어 안내 ↔ 동작 mismatch 를 해소한다. 가드만 풀고 페이지 함수가 그대로면
+ * 무한 redirect 회귀 — 두 길을 함께 풀어야 한다 (011 §D2).
  *
  * Redirect 표:
  *   - 비로그인 → /login (010 §D1 통합 진입점)
@@ -172,7 +172,10 @@ export async function requireApprovedUser(): Promise<UserSession> {
  *   - rejected → /rejected
  *
  * 반환된 `UserSession.status` 로 페이지 컴포넌트가 "심사 대기 중" 배너를 분기 노출
- * 가능 (011 §D4).
+ * 가능 (011 §D4 → 013 §D3 카피 정직성 갱신).
+ *
+ * 013 §D1 — pending + step != null 의 resume fallback (`?? "/pending"`) 을 `?? "/me"`
+ * 로 갱신. `/pending` 라우트 폐기 + `/me` 흡수에 따른 정합.
  */
 export async function requireOnboardedUser(): Promise<UserSession> {
   const { authUser } = await fetchAuthAndOperatorStatus();
@@ -193,7 +196,7 @@ export async function requireOnboardedUser(): Promise<UserSession> {
           status: friend.status,
           onboarding_step: friend.onboarding_step,
         },
-      }) ?? "/pending";
+      }) ?? "/me";
     redirect(resumeTarget);
   }
   // 통과: status='approved' 또는 (status='pending' + onboarding_step=null)

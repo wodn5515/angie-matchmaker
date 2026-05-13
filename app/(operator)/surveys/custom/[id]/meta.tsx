@@ -44,7 +44,7 @@ export function CustomSurveyMeta({
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
-        <CardTitle>설문 정보</CardTitle>
+        <CardTitle>테스트 정보</CardTitle>
         {confirmDelete ? (
           <div className="flex items-center gap-2">
             <span className="text-xs text-[var(--color-fg-muted)]">
@@ -72,7 +72,7 @@ export function CustomSurveyMeta({
             variant="ghost"
             onClick={() => setConfirmDelete(true)}
           >
-            설문 삭제
+            테스트 삭제
           </Button>
         )}
       </CardHeader>

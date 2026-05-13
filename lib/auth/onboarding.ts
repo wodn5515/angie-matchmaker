@@ -8,7 +8,7 @@
  *   - `pending + step=1` → /onboarding/profile (Step 1 진행 중)
  *   - `pending + step=2` → /onboarding/preferences (Step 1 완료, Step 2 진행 중)
  *   - `pending + step=3` → /onboarding/survey (Step 2 까지 완료, Step 3 진행 중)
- *   - `pending + step=null` → 온보딩 종료, 운영자 심사 대기 → null (호출 측이 /pending 등 분기)
+ *   - `pending + step=null` → 온보딩 종료, 운영자 심사 대기 → null (013 §D1 후 호출 측이 /me 분기)
  *   - `approved | rejected` → null (온보딩 더 이상 의미 없음)
  */
 export type OnboardingFriend = {

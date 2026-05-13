@@ -26,16 +26,16 @@ export default async function SurveysPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs text-[var(--color-fg-muted)]">설문 관리</p>
-        <h1 className="text-2xl font-semibold tracking-tight">설문</h1>
+        <p className="text-xs text-[var(--color-fg-muted)]">연애 성향 테스트 관리</p>
+        <h1 className="text-2xl font-semibold tracking-tight">연애 성향 테스트</h1>
       </div>
 
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div>
-            <CardTitle>표준 설문</CardTitle>
+            <CardTitle>표준 연애 성향 테스트</CardTitle>
             <p className="mt-0.5 text-xs text-[var(--color-fg-muted)]">
-              모든 친구가 동일하게 받는 베이스 설문이에요. 챕터 단위로 구성하세요.
+              모든 가입자가 동일하게 받는 베이스 테스트예요. 챕터 단위로 구성하세요.
             </p>
           </div>
           <Link href="/surveys/standard">
@@ -56,9 +56,9 @@ export default async function SurveysPage() {
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div>
-            <CardTitle>커스텀 설문</CardTitle>
+            <CardTitle>커스텀 테스트</CardTitle>
             <p className="mt-0.5 text-xs text-[var(--color-fg-muted)]">
-              특정 친구에게 보내는 1회성 추가 설문. 응답은 운영자만 봅니다.
+              특정 가입자에게 보내는 1회성 추가 테스트. 응답은 운영자만 봅니다.
             </p>
           </div>
           <Link href="/surveys/custom/new">
@@ -70,7 +70,7 @@ export default async function SurveysPage() {
         <CardBody className="p-0">
           {customs.length === 0 ? (
             <div className="px-5 py-8">
-              <EmptyState title="아직 커스텀 설문이 없어요" />
+              <EmptyState title="아직 커스텀 테스트가 없어요" />
             </div>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">

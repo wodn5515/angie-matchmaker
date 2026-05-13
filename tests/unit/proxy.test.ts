@@ -23,6 +23,14 @@
  *   - 비로그인이 가입자 라우트 (/me, /onboarding) 진입 시 `/login` 으로 redirect
  *     (이전엔 `/signup`).
  *
+ * 013-pending-deprecation: `/pending` 라우트 폐기 + `/me` 흡수.
+ *   - pending+step=null × `/pending` → redirect `/me` (이전: pass)
+ *   - pending+step=null × `/onboarding/*` → redirect `/me` (이전: `/pending`)
+ *   - pending+step=null × 운영자 path → redirect `/me` (이전: `/pending`)
+ *   - 비로그인 × `/pending` → redirect `/login` (이전: pass — announcement 자격 박탈)
+ *   - 회귀 유지: pending+step!=null × /me → onboarding resume / rejected × /pending → /rejected
+ *     / approved × /pending → /me / 운영자 × /pending → / 모두 유지.
+ *
  * 가드 함수 인터페이스 가정 (worker 가 채울 모듈):
  *   import { resolveGuardTarget } from "@/lib/auth/guard";
  *
@@ -109,6 +117,31 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
       expect(result).toEqual({ type: "pass" });
     });
 
+    it("비로그인이 /pending 진입 시 /login 으로 리다이렉트 (013 §D1 — 폐기된 라우트, announcement 자격 박탈)", () => {
+      // 013 §D1 — `/pending` 라우트 폐기. PENDING_PREFIX 가 announcement 분기에서
+      // 제거되므로 비로그인의 진입은 가입자/운영자 라우트와 동일하게 `/login` 으로 흡수.
+      // 외부 링크/북마크 호환은 `/login` 진입 → 로그인 후 가드의 다음 hop 으로 자연 보존.
+      const result = resolveGuardTarget({
+        pathname: "/pending",
+        user: null,
+        isOperator: false,
+        friend: null,
+      });
+      expect(result).toEqual({ type: "redirect", to: "/login" });
+    });
+
+    it("비로그인이 /rejected 진입은 통과 (013 §D1 — `/rejected` 만 announcement 로 유지)", () => {
+      // 013 후속 영향 — announcement 라우트는 `/rejected` 만 남는다.
+      // 비로그인의 외부 링크 진입은 안내 톤이 유지되어야 한다.
+      const result = resolveGuardTarget({
+        pathname: "/rejected",
+        user: null,
+        isOperator: false,
+        friend: null,
+      });
+      expect(result).toEqual({ type: "pass" });
+    });
+
     it("/auth/callback 은 비로그인이어도 통과 (OAuth 콜백 처리)", () => {
       const result = resolveGuardTarget({
         pathname: "/auth/callback",
@@ -171,6 +204,19 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
       expect(result).toEqual({ type: "redirect", to: "/" });
     });
 
+    it("운영자가 폐기된 /pending 진입 시 / 로 리다이렉트 (013 §D1 — 회귀 유지)", () => {
+      // 013 §D1 매트릭스 — 운영자 × `/pending` 행은 그대로 `/` 흡수.
+      // PENDING_PREFIX 가 isAnnouncementRoute 에서 빠져도, 운영자 분기의
+      // "안내·로그인·가입자 라우트 모두 / 로" 경로로 자연 흡수.
+      const result = resolveGuardTarget({
+        pathname: "/pending",
+        user: { email: "alice@gmail.com" },
+        isOperator: true,
+        friend: null,
+      });
+      expect(result).toEqual({ type: "redirect", to: "/" });
+    });
+
     it("운영자가 폐기된 /signup 진입 시 / 로 리다이렉트 (010 §D1 호환)", () => {
       // 010 §D1 — `/signup` 라우트 폐기. 로그인된 운영자가 외부 링크/북마크로
       // 들어와도 운영자 대시보드 / 로 가는 게 자연.
@@ -219,15 +265,22 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
   describe("OAuth O + 가입자 + status=pending (온보딩 완료 — step=null)", () => {
     // 011 §D1 — 온보딩 완료(step=null) + 심사 대기 사용자에게 /me/* 도 열어준다.
     // 기존엔 모두 /pending 으로 redirect 됐던 행을 pass 로 뒤집는다.
+    //
+    // 013 §D1 — 추가 변경:
+    //   - /pending 진입 → /me 로 redirect (이전: pass) — 라우트 자체 폐기
+    //   - /onboarding/* 진입 → /me 로 redirect (이전: /pending) — fallback 변경
+    //   - 운영자 path 진입 → /me 로 redirect (이전: /pending) — 그 외 분기 fallback 변경
 
-    it("/pending 진입은 통과 (회귀 유지)", () => {
+    it("/pending 진입 시 /me 로 리다이렉트 (013 §D1 NEW — 라우트 폐기)", () => {
+      // 013 §D1 — `/pending` 페이지 자체 삭제 + 가드가 URL 흡수. 외부 링크/북마크
+      // 호환 보존을 위해 redirect 로만 처리 (가드 단계 흡수가 깔끔).
       const result = resolveGuardTarget({
         pathname: "/pending",
         user: { email: "user1@gmail.com" },
         isOperator: false,
         friend: { status: "pending", onboarding_step: null },
       });
-      expect(result).toEqual({ type: "pass" });
+      expect(result).toEqual({ type: "redirect", to: "/me" });
     });
 
     it("/me 진입은 통과 (011 §D1 NEW)", () => {
@@ -280,25 +333,29 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
       expect(result).toEqual({ type: "pass" });
     });
 
-    it("/onboarding/profile 진입은 여전히 /pending 으로 차단 (회귀 유지 — 온보딩 단계로 되돌릴 수 없음)", () => {
-      // 011 §D1 표 — pending + null + /onboarding/* → /pending 유지.
+    it("/onboarding/profile 진입은 /me 로 차단 (013 §D1 — 이전: /pending)", () => {
+      // 013 §D1 매트릭스 — pending+null × /onboarding/* fallback 이 `/pending` 에서
+      // `/me` 로 변경. resolveOnboardingResumeTarget 의 step=null 케이스가 null
+      // 리턴이므로 호출처 (guard.ts) 의 `?? "/pending"` → `?? "/me"` 변경에 의존.
       const result = resolveGuardTarget({
         pathname: "/onboarding/profile",
         user: { email: "user1@gmail.com" },
         isOperator: false,
         friend: { status: "pending", onboarding_step: null },
       });
-      expect(result).toEqual({ type: "redirect", to: "/pending" });
+      expect(result).toEqual({ type: "redirect", to: "/me" });
     });
 
-    it("운영자 라우트 (/friends) 진입 시 /pending 으로 차단 (회귀 유지)", () => {
+    it("운영자 라우트 (/friends) 진입 시 /me 로 차단 (013 §D1 — 이전: /pending)", () => {
+      // 013 §D1 — pending+null × "그 외 보호 path" 의 default redirect target 이
+      // `/pending` 에서 `/me` 로 변경 (라우트 폐기에 따른 fallback 단일화).
       const result = resolveGuardTarget({
         pathname: "/friends",
         user: { email: "user1@gmail.com" },
         isOperator: false,
         friend: { status: "pending", onboarding_step: null },
       });
-      expect(result).toEqual({ type: "redirect", to: "/pending" });
+      expect(result).toEqual({ type: "redirect", to: "/me" });
     });
   });
 
@@ -366,6 +423,19 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
       });
       expect(result).toEqual({ type: "pass" });
     });
+
+    it("rejected 가입자가 폐기된 /pending 진입 시 /rejected 로 리다이렉트 (013 §D1 — 회귀 유지)", () => {
+      // 013 §D1 매트릭스 — rejected × `/pending` 행은 그대로 `/rejected` 흡수.
+      // PENDING_PREFIX 가 announcement 분기에서 빠져도 rejected 분기가 우선해서
+      // `/rejected` 외 모든 path 를 흡수해야 한다.
+      const result = resolveGuardTarget({
+        pathname: "/pending",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "rejected", onboarding_step: null },
+      });
+      expect(result).toEqual({ type: "redirect", to: "/rejected" });
+    });
   });
 
   describe("OAuth O + 가입자 + status=approved", () => {
@@ -392,6 +462,19 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
     it("승인된 가입자가 운영자 라우트 진입 시 /me 로 리다이렉트", () => {
       const result = resolveGuardTarget({
         pathname: "/friends",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "approved", onboarding_step: null },
+      });
+      expect(result).toEqual({ type: "redirect", to: "/me" });
+    });
+
+    it("승인된 가입자가 폐기된 /pending 진입 시 /me 로 리다이렉트 (013 §D1 — 회귀 유지)", () => {
+      // 013 §D1 매트릭스 — approved × `/pending` 행은 이전부터 `/me` 흡수였고
+      // 본 결정에서도 동일하게 유지. PENDING_PREFIX 가 announcement 에서 빠져도
+      // approved 분기의 default fallback `/me` 가 자연 흡수.
+      const result = resolveGuardTarget({
+        pathname: "/pending",
         user: { email: "user1@gmail.com" },
         isOperator: false,
         friend: { status: "approved", onboarding_step: null },

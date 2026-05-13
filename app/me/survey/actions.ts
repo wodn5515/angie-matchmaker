@@ -71,7 +71,7 @@ export async function saveMeAnswerAction(input: {
  * 챕터 runner 가 마지막 챕터 완료 시 호출.
  *
  * - 온보딩 중(pending + onboarding_step != null) → onboarding_step=null 처리 후
- *   `/pending` 으로 안내
+ *   `/me` 로 안내 (013 §D1·D2 — `/pending` 라우트 폐기, `/me` 가 심사 대기 배너 노출)
  * - 승인된 가입자 → 단순히 `/me` 로 navigate
  * - rejected 가입자는 차단 (server action 직접 POST 우회 방지)
  */
@@ -90,7 +90,7 @@ export async function finishSurveyAction(): Promise<{
       .from("friends")
       .update({ onboarding_step: null })
       .eq("id", session.friendId);
-    return { ok: true, nextHref: "/pending" };
+    return { ok: true, nextHref: "/me" };
   }
   if (session.status === "approved") {
     return { ok: true, nextHref: "/me" };
