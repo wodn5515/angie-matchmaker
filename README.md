@@ -5,10 +5,10 @@
 ## ✨ 핵심 기능
 
 - **자가 가입 (Google OAuth)** — `/signup` 진입 → OAuth → 신규 가입자면 `/onboarding/profile` 로 라우팅
-- **3 step 온보딩** — Step 1 (필수: 이름·성별·성취향·추천인) → Step 2 (이상형, 선택) → Step 3 (연애 성향 테스트, 선택)
+- **3 step 온보딩** — Step 1 (필수: 이름·성별·성취향·추천인 + 권장 13: 인스타·출생연도·거주지역·출신지역·직업·연애상태·매칭관심도·흡연·음주·결혼관·문신) → Step 2 (이상형, 선택) → Step 3 (연애 성향 테스트, 선택)
 - **운영자 심사** — 추천인 + 가입자 정보 + 이상형 + 설문 응답을 본 뒤 [✓ 승인] / [✗ 거절 + 비공개 메모]
 - **자기 페이지** — 가입자는 `/me` 에서 본인 프로필 / 이상형 / 설문 응답을 언제든 수정
-- **1:1 비교 뷰** — 메타데이터 비교 + **이상형 양방향 매칭** (A→B / B→A, 같음/일부/다름/중립 색상 단서) + 표준 설문 비교
+- **1:1 비교 뷰** — 메타데이터 비교 + **이상형 양방향 매칭** (A→B / B→A, 같음/일부/다름/중립 색상 단서, 흡연·음주·결혼관·문신 포함 8 항목) + 표준 설문 비교
 - **Pair 노트장** — 비교 메모 + 매칭 회고 (`introduced`, `outcome`, `outcome_memo`) 운영자 본인 회고용
 - **Black + Pink 다크 톤** — 운영자 측은 Linear / Vercel admin 결, 가입자 측은 부드러운 그라데이션 + 게이미피케이션
 
@@ -65,6 +65,8 @@ cp .env.example .env.local
    - [`supabase/migrations/0001_init.sql`](./supabase/migrations/0001_init.sql) (V1 기반 스키마)
    - [`supabase/migrations/0002_friend_invitations.sql`](./supabase/migrations/0002_friend_invitations.sql) (V1 토큰 흐름 — V2 가 곧 폐기)
    - [`supabase/migrations/0003_v2_self_signup.sql`](./supabase/migrations/0003_v2_self_signup.sql) (V2 자가 가입 전환 — friends 확장 + friend_ideals + 1:N 5 + survey_answers 키 변경 + V1 invitation 폐기)
+   - [`supabase/migrations/0004_v2_1_followup.sql`](./supabase/migrations/0004_v2_1_followup.sql) (V2.1 후속 — `upsert_friend_ideal_aggregate` RPC + V1 컬럼 DROP 멱등성 가드)
+   - [`supabase/migrations/0005_friends_self_traits.sql`](./supabase/migrations/0005_friends_self_traits.sql) (009 — friends 본인 자기 보고 4 항목: smoking/drinking/marriage_view/tattoo)
 3. Authentication → Providers → Google 활성화 (OAuth Client ID/Secret 입력)
 4. Authentication → URL Configuration 에 redirect URL 등록 (`https://<your-app>.vercel.app/auth/callback`)
 5. 프로젝트 키 3개를 `.env.local` 에 복사
@@ -118,7 +120,9 @@ lib/
 supabase/migrations/
 ├── 0001_init.sql
 ├── 0002_friend_invitations.sql   (V1 — V2 에서 DROP)
-└── 0003_v2_self_signup.sql       (V2 전환)
+├── 0003_v2_self_signup.sql       (V2 전환)
+├── 0004_v2_1_followup.sql        (V2.1 후속 — upsert RPC + 멱등성 가드)
+└── 0005_friends_self_traits.sql  (009 — 본인 자기 보고 4 항목)
 
 tests/
 ├── unit/                    Vitest + RTL (proxy guard / auth-user / compare-ideal)
