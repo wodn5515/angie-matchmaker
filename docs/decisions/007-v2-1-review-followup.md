@@ -154,8 +154,11 @@ test-writer 단발 호출 (커밋 `5da1b63`) 결과 전량 채택. 6 spec 파일
 | D3 | `tests/unit/reject-reason-validation.test.ts` | 11 |
 | D4 | `tests/unit/auth-callback-redirect.test.ts` | 7 |
 | D6 + D9 | `tests/unit/proxy-redirect-search.test.ts` | 11 |
+| D7 (라운드-4 추가) | `tests/integration/answer-question-fetch.test.ts` | 10 (fetchAnswerableQuestion helper 회귀 spec — 사용자 🟡 #1 응대) |
 
 D7 (캐싱) + D8 (헬퍼 통합) 은 외부 동작 회귀 spec 으로 기존 P0 spec 이 방어. 별 신규 spec 없음.
+
+단, 사용자 리뷰 🟡 #1 응대로 D7 의 PostgREST embed 검증이 mock 으로 잘려있던 점을 해소하기 위해 helper (`fetchAnswerableQuestion`) 추출 + 회귀 spec 을 라운드-4 에서 추가 (커밋 `dccd380` + `65e17c1`).
 
 ### S2. worker 가 채울 인터페이스 (시그니처 확정)
 
