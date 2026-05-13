@@ -122,7 +122,9 @@ export function resolveGuardTarget(input: GuardInput): GuardTarget {
   }
 
   // status === "approved"
-  if (isSignupUserRoute(pathname)) return { type: "pass" };
-  // 운영자 라우트나 /pending/rejected 안내 페이지 시도 → /me 로
+  // approved 는 /me/* 만 통과. 그 외 (/onboarding/* / /pending / /rejected / 운영자 path)
+  // 는 모두 /me 로 리다이렉트 — 008 §D1·D2 (사용자 보고 무한 체인 + 운영자 path 진입 시
+  // /login 으로 잘못 가는 버그 fix).
+  if (isPathOrPrefix(pathname, ME_PREFIX)) return { type: "pass" };
   return { type: "redirect", to: "/me" };
 }

@@ -8,12 +8,13 @@ import {
   type FriendIdealAggregate,
 } from "@/lib/db/ideals";
 import {
-  REGION_LABEL,
-  JOB_LABEL,
   SMOKING_LABEL,
   DRINKING_LABEL,
   MARRIAGE_TIMING_LABEL,
   TATTOO_LABEL,
+  getRegionLabel,
+  getHometownLabel,
+  getJobLabel,
 } from "@/lib/types/v2-options";
 import type { Friend } from "@/lib/types/domain";
 
@@ -102,10 +103,8 @@ function Direction({
     idealText:
       ideals.regions.length === 0
         ? "상관없음"
-        : ideals.regions.map((r) => REGION_LABEL[r] ?? r).join(", "),
-    actualText: target.region
-      ? REGION_LABEL[target.region] ?? target.region
-      : "—",
+        : ideals.regions.map((r) => getRegionLabel(r)).join(", "),
+    actualText: target.region ? getRegionLabel(target.region) : "—",
     tone: compareIdealValues({
       ideal: ideals.regions,
       profile: target.region,
@@ -119,10 +118,8 @@ function Direction({
     idealText:
       ideals.hometowns.length === 0
         ? "상관없음"
-        : ideals.hometowns.map((r) => REGION_LABEL[r] ?? r).join(", "),
-    actualText: target.hometown
-      ? REGION_LABEL[target.hometown] ?? target.hometown
-      : "—",
+        : ideals.hometowns.map((r) => getHometownLabel(r)).join(", "),
+    actualText: target.hometown ? getHometownLabel(target.hometown) : "—",
     tone: compareIdealValues({
       ideal: ideals.hometowns,
       profile: target.hometown,
@@ -178,10 +175,8 @@ function Direction({
     idealText:
       ideals.jobs.length === 0
         ? "상관없음"
-        : ideals.jobs.map((j) => JOB_LABEL[j] ?? j).join(", "),
-    actualText: target.occupation
-      ? JOB_LABEL[target.occupation] ?? target.occupation
-      : "—",
+        : ideals.jobs.map((j) => getJobLabel(j)).join(", "),
+    actualText: target.occupation ? getJobLabel(target.occupation) : "—",
     tone: compareIdealValues({
       ideal: ideals.jobs,
       profile: target.occupation,

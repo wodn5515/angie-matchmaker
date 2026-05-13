@@ -19,7 +19,11 @@ import {
   MATCH_INTEREST_LABEL,
   FRIEND_STATUS_LABEL,
 } from "@/lib/types/domain";
-import { REGION_LABEL } from "@/lib/types/v2-options";
+import {
+  getRegionLabel,
+  getHometownLabel,
+  getJobLabel,
+} from "@/lib/types/v2-options";
 import { AnswerView } from "@/components/operator/answer-display";
 import { FriendIdealSection } from "@/components/operator/friend-ideal-section";
 import { ReviewActions } from "@/components/operator/review-actions";
@@ -80,10 +84,8 @@ export default async function FriendDetailPage({
             {GENDER_LABEL[friend.gender]} · 선호{" "}
             {PREFERRED_GENDER_LABEL[friend.preferred_gender]}
             {friend.birth_year ? ` · ${friend.birth_year}년생` : ""}
-            {friend.region
-              ? ` · 거주 ${REGION_LABEL[friend.region] ?? friend.region}`
-              : ""}
-            {friend.occupation ? ` · ${friend.occupation}` : ""}
+            {friend.region ? ` · 거주 ${getRegionLabel(friend.region)}` : ""}
+            {friend.occupation ? ` · ${getJobLabel(friend.occupation)}` : ""}
           </p>
           <p className="mt-1 text-[11px] text-[var(--color-fg-muted)]">
             추천: {friend.recommender_name || "(없음)"}
@@ -158,11 +160,7 @@ export default async function FriendDetailPage({
             />
             <Field
               label="출신 지역"
-              value={
-                friend.hometown
-                  ? REGION_LABEL[friend.hometown] ?? friend.hometown
-                  : "—"
-              }
+              value={friend.hometown ? getHometownLabel(friend.hometown) : "—"}
             />
             <Field
               label="연애 상태"

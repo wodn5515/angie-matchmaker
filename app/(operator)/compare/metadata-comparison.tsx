@@ -6,6 +6,11 @@ import {
   RELATIONSHIP_STATUS_LABEL,
   MATCH_INTEREST_LABEL,
 } from "@/lib/types/domain";
+import {
+  getRegionLabel,
+  getHometownLabel,
+  getJobLabel,
+} from "@/lib/types/v2-options";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { profileCompletion } from "@/lib/db/friends";
@@ -99,9 +104,27 @@ function buildRows(a: Friend, b: Friend): Row[] {
     ),
   );
   rows.push(num("출생 연도", a.birth_year, b.birth_year));
-  rows.push(text("거주 지역", a.region, b.region));
-  rows.push(text("출신 지역", a.hometown, b.hometown));
-  rows.push(text("직업", a.occupation, b.occupation));
+  rows.push(
+    text(
+      "거주 지역",
+      a.region ? getRegionLabel(a.region) : null,
+      b.region ? getRegionLabel(b.region) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "출신 지역",
+      a.hometown ? getHometownLabel(a.hometown) : null,
+      b.hometown ? getHometownLabel(b.hometown) : null,
+    ),
+  );
+  rows.push(
+    text(
+      "직업",
+      a.occupation ? getJobLabel(a.occupation) : null,
+      b.occupation ? getJobLabel(b.occupation) : null,
+    ),
+  );
   rows.push(
     text(
       "연애 상태",
