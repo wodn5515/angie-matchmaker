@@ -1,4 +1,25 @@
 import { z } from "zod";
+import {
+  REGION_OPTIONS,
+  REGION_DETAIL_OPTIONS,
+  type RegionCode,
+} from "@/lib/types/v2-options";
+
+/**
+ * 012 nit #3 — server-side enum 검증 (defense-in-depth).
+ * 클라이언트 폼이 정상 사전을 쓰면 자연 통과. raw POST 로 사전 외 값이 들어와도
+ * 정합 복원 (region 자체는 reject — 의미 없는 광역 코드는 거부 안전, detail 은
+ * normalize — 알 수 없는 detail 은 '광역만' 으로 떨어뜨려 silent fallback).
+ */
+const VALID_REGION_CODES: ReadonlySet<string> = new Set(
+  REGION_OPTIONS.map((o) => o.value),
+);
+
+function isValidDetailFor(region: string, detail: string): boolean {
+  const arr = REGION_DETAIL_OPTIONS[region as RegionCode];
+  if (!arr) return false;
+  return arr.some((d) => d.value === detail);
+}
 
 /**
  * 가입자 프로필 (V2 friends.* 일부) 유효성 검증 스키마.
@@ -9,7 +30,12 @@ import { z } from "zod";
  * 선택: birth_year / region / hometown / occupation / instagram /
  *       relationship_status / match_interest
  */
-export const ProfileSchema = z.object({
+/**
+ * Base 객체 스키마 — `.omit()` / `.pick()` 등 ZodObject 메서드가 필요한 호출처
+ * (예: app/me/profile/actions.ts) 를 위해 별도로 export.
+ * 일반 폼 제출은 아래의 ProfileSchema (transform 포함) 를 사용한다.
+ */
+export const ProfileObjectSchema = z.object({
   name: z.string().trim().min(1, "이름은 필수입니다").max(60),
   gender: z.enum(["male", "female", "other"]),
   preferred_gender: z.enum(["male", "female", "any"]),
@@ -36,7 +62,19 @@ export const ProfileSchema = z.object({
     .max(80)
     .optional()
     .transform((v) => v || null),
+  region_detail: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((v) => v || null),
   hometown: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((v) => v || null),
+  hometown_detail: z
     .string()
     .trim()
     .max(80)
@@ -85,6 +123,49 @@ export const ProfileSchema = z.object({
     .or(z.literal(""))
     .optional()
     .transform((v) => (v === "" || v == null ? null : v)),
+});
+
+/**
+ * 012 §D1 CHECK 정합 + nit #3 server-side enum 검증.
+ *
+ * - region 자체가 사전 외 값이면 zod issue 추가 (reject).
+ * - region_detail 가 그 region 의 사전 외 값이면 null 로 normalize.
+ * - region 없이 detail 만 있는 경우 detail 을 null 로 정규화 (D1 CHECK 정합).
+ * - hometown / hometown_detail 도 동일 패턴.
+ */
+export const ProfileSchema = ProfileObjectSchema.transform((data, ctx) => {
+  if (data.region && !VALID_REGION_CODES.has(data.region)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["region"],
+      message: "알 수 없는 거주지역 코드입니다",
+    });
+  }
+  if (data.hometown && !VALID_REGION_CODES.has(data.hometown)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["hometown"],
+      message: "알 수 없는 출신지역 코드입니다",
+    });
+  }
+
+  const region_detail =
+    data.region && data.region_detail && isValidDetailFor(data.region, data.region_detail)
+      ? data.region_detail
+      : null;
+  const hometown_detail =
+    data.hometown &&
+    data.hometown_detail &&
+    isValidDetailFor(data.hometown, data.hometown_detail)
+      ? data.hometown_detail
+      : null;
+
+  return {
+    ...data,
+    // D1 CHECK 정합 — region 없으면 detail 도 null.
+    region_detail: data.region ? region_detail : null,
+    hometown_detail: data.hometown ? hometown_detail : null,
+  };
 });
 
 export type ProfileInput = z.infer<typeof ProfileSchema>;
@@ -149,6 +230,39 @@ export const PreferencesSchema = z.object({
 });
 
 /**
+ * "region|detail" 결합 직렬화를 객체 배열로 normalize (012 §D2 + 디자이너 게이트).
+ *
+ * - 빈 값 / region 빈 토큰은 폐기 (input 0개 의도).
+ * - "seoul" (파이프 없음) → { region: "seoul", detail: "" } 로 normalize.
+ *   spec 의 두 정책 (reject vs normalize) 중 normalize 채택 — 사용자 입력 보존.
+ * - "seoul|" → { region: "seoul", detail: "" }
+ * - "seoul|gangnam-gu" → { region: "seoul", detail: "gangnam-gu" }
+ *
+ * 012 nit #3 — server-side enum 검증 (defense-in-depth):
+ *  - region 이 REGION_OPTIONS 외 값이면 그 행 폐기 (raw POST 방어).
+ *  - detail 이 해당 region 의 사전 외 값이면 detail '' 로 normalize (광역 전체로
+ *    fallback). silent — UI 가 정상 사전을 쓰면 자연 통과.
+ */
+function parseRegionDetailList(
+  values: FormDataEntryValue[],
+): Array<{ region: string; detail: string }> {
+  const out: Array<{ region: string; detail: string }> = [];
+  for (const raw of values) {
+    const str = String(raw);
+    if (!str) continue;
+    const idx = str.indexOf("|");
+    const region = (idx === -1 ? str : str.slice(0, idx)).trim();
+    const detail = (idx === -1 ? "" : str.slice(idx + 1)).trim();
+    if (!region) continue;
+    if (!VALID_REGION_CODES.has(region)) continue;
+    const safeDetail =
+      detail === "" || isValidDetailFor(region, detail) ? detail : "";
+    out.push({ region, detail: safeDetail });
+  }
+  return out;
+}
+
+/**
  * FormData → PreferencesSchema 입력 + 멀티값 배열 + 우선순위 배열 추출.
  * MultiSelectChip 은 같은 name 으로 여러 hidden input 을 생성해 `getAll(name)` 으로 받는다.
  * RankingPicker 는 `${name}_rank_1`/`_rank_2`/`_rank_3` 3개 hidden input.
@@ -165,8 +279,11 @@ export function parsePreferencesFormData(formData: FormData) {
     free_text: formData.get("free_text") ?? "",
   });
 
-  const regions = formData.getAll("regions").map((v) => String(v)).filter(Boolean);
-  const hometowns = formData.getAll("hometowns").map((v) => String(v)).filter(Boolean);
+  // 012 — region/hometown 은 "region|detail" 결합 직렬화 (디자이너 게이트).
+  // split('|') 첫 토큰 = region, 두 번째 = detail (없으면 '' 광역 전체).
+  // 잘못된 형식 ('|' 없는 raw) 은 detail='' 로 normalize (worker 자율 정책).
+  const regions = parseRegionDetailList(formData.getAll("regions"));
+  const hometowns = parseRegionDetailList(formData.getAll("hometowns"));
   const jobs = formData.getAll("jobs").map((v) => String(v)).filter(Boolean);
   const personality_keywords = formData
     .getAll("personality_keywords")

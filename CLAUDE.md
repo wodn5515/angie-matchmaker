@@ -82,7 +82,7 @@ matchmaker/
 │   ├── types/           # domain (V2) / v2-options (옵션 사전)
 │   ├── validation/      # profile (ProfileSchema + Preferences FormData 파싱)
 │   └── utils.ts
-├── supabase/migrations/ # 0001_init / 0002_friend_invitations / 0003_v2_self_signup
+├── supabase/migrations/ # 0001_init / 0002_friend_invitations / 0003_v2_self_signup / 0004_v2_1_followup / 0005_friends_self_traits / 0006_region_detail
 ├── public/
 ├── tests/               # Vitest 단위/통합 (unit/, integration/)
 ├── e2e/                 # Playwright spec (tests/)
@@ -120,14 +120,14 @@ PRD §6 + 결정 로그 기준. **Black base + Pink accent 다크 톤**. 두 청
 
 ## 6. 데이터 모델
 
-PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql` → `0004_v2_1_followup.sql` → `0005_friends_self_traits.sql`).
+PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql` → `0004_v2_1_followup.sql` → `0005_friends_self_traits.sql` → `0006_region_detail.sql`).
 
 | 테이블 | 역할 | 핵심 규칙 |
 |---|---|---|
-| `friends` | 가입자 (V2 확장 후) | `auth_user_id UNIQUE` + `recommender_*` NOT NULL + `status` CHECK + `onboarding_step` (1/2/3/null) + **자기 보고 4 항목 (009: smoking/drinking/marriage_view/tattoo enum, nullable)** |
+| `friends` | 가입자 (V2 확장 후) | `auth_user_id UNIQUE` + `recommender_*` NOT NULL + `status` CHECK + `onboarding_step` (1/2/3/null) + **자기 보고 4 항목 (009: smoking/drinking/marriage_view/tattoo enum, nullable)** + **거주/출신 detail (012: region_detail/hometown_detail, nullable, CHECK: detail 있으면 광역 region 도 있어야 함)** |
 | `friend_ideals` | 이상형 단일값 (1:1) | `friend_id` PK, ON DELETE CASCADE. smoking/drinking/marriage_timing/tattoo enum + age_from/age_to + hometown_same_bonus + free_text |
-| `friend_ideal_regions` | 선호 거주지역 다중 (1:N) | PRIMARY KEY (friend_id, region) |
-| `friend_ideal_hometowns` | 선호 출신지역 다중 (1:N) | PRIMARY KEY (friend_id, hometown) |
+| `friend_ideal_regions` | 선호 거주지역 다중 (1:N) | PRIMARY KEY (friend_id, region, **region_detail**) — `region_detail text NOT NULL DEFAULT ''`. 빈문자열 = "광역 전체" (012) |
+| `friend_ideal_hometowns` | 선호 출신지역 다중 (1:N) | PRIMARY KEY (friend_id, hometown, **hometown_detail**) — 동일 패턴 (012) |
 | `friend_ideal_jobs` | 선호 직업군 다중 (1:N) | PRIMARY KEY (friend_id, job) |
 | `friend_ideal_personality_keywords` | 성격 키워드 다중 (1:N) | PRIMARY KEY (friend_id, keyword) |
 | `friend_ideal_priorities` | 매칭 우선순위 top 3 (1:N ranked) | (friend_id, rank) PK + (friend_id, category) UNIQUE + rank IN (1,2,3) |
@@ -148,6 +148,14 @@ V2.1 신규 RPC function (0004 마이그레이션):
 
 009 신규 컬럼 (0005 마이그레이션):
 - `friends.smoking / drinking / marriage_view / tattoo` 4 컬럼 (모두 nullable + CHECK). 본인 자기 보고로 이상형 양방향 매칭에 사용 — `compareSelfTrait` (`lib/db/self-trait-match.ts`) 가 항목별 매트릭스로 same/partial/different/neutral 판정.
+
+012 신규 컬럼·PK (0006 마이그레이션 — 거주/출신 지역 2단계 세분화):
+- `friends.region_detail / hometown_detail` (nullable + CHECK: detail 있으면 광역도 있어야 함). 본인은 광역만 알고 detail 모를 수 있으므로 nullable.
+- `friend_ideal_regions.region_detail` / `friend_ideal_hometowns.hometown_detail` (NOT NULL DEFAULT '') + PK 확장 — `(friend_id, region, region_detail)`. 빈문자열 = "광역 전체" 의미 (`(seoul, '')` = 서울 전체 선호).
+- 옵션 사전 (`lib/types/v2-options.ts:REGION_DETAIL_OPTIONS`) — 광역시 7개는 자치구·군 단위, 도 9개 (제주 포함) 는 시·군 단위, 세종은 빈 배열 (세분화 없음). 행정안전부 시군구 목록 기준 250+ 항목.
+- 매칭 함수 `compareIdealRegions` / `compareIdealHometowns` (`lib/db/ideals.ts`) — same/partial/different/neutral 4종 분류 (광역 전체 선호 vs 본인 광역 일치 → same, region 일치하지만 detail 미일치 → partial 등).
+- RPC `upsert_friend_ideal_aggregate` 본문 갱신 — `p_regions text[]` 가 `"region|detail"` 결합 문자열 배열로 들어와 `split_part` 분해 후 INSERT.
+- UI 프리미티브 `components/ui/region-detail-picker.tsx` — 광역 17개 Accordion + 광역 "전체" 토글 / detail 다중 체크 (상호 배타: "전체" 와 detail 중 하나만).
 
 주요 규칙:
 - 모든 DB 호출은 `lib/db/*` 의 service-role 클라이언트로만 (RLS는 deny-all)
@@ -171,12 +179,12 @@ V2.1 신규 RPC function (0004 마이그레이션):
 | `/onboarding/profile` | 가입자 (friends row 없음) | Step 1 (필수: 이름·성별·성취향·추천인) |
 | `/onboarding/preferences` | 가입자 (onboarding_step=2) | Step 2 (이상형, 선택) |
 | `/onboarding/survey` | 가입자 (onboarding_step=3) | Step 3 (연애 성향 테스트, 선택) |
-| `/me` | 가입자 (approved) | 자기 페이지 (대시보드) |
+| `/me` | 가입자 (approved 또는 pending+step=null) | 자기 페이지 (대시보드) — pending 시 상단 배너 |
 | `/me/profile` | 〃 | 본인 프로필 수정 |
 | `/me/preferences` | 〃 | 이상형 수정 |
 | `/me/survey` | 〃 | 설문 진행 / 재진입 |
 | `/me/survey/[chapter]` | 〃 | 챕터 runner (자동 저장) |
-| `/pending` | 가입자 (status=pending) | 심사 대기 안내 |
+| `/pending` | 가입자 (status=pending) | 심사 대기 안내 + `/me/*` 액션 카드 (011 §D3) |
 | `/rejected` | 가입자 (status=rejected) | 가입 거절 안내 |
 | `/login`, `/auth/callback`, `/auth/signout` | — | OAuth (운영자·가입자 공용 단일 진입점 — 010-v2-unified-login) |
 

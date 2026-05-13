@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireApprovedUser, ensureNotOperator } from "@/lib/auth/user";
+import { requireOnboardedUser, ensureNotOperator } from "@/lib/auth/user";
 import { upsertFriendIdealAggregate } from "@/lib/db/ideals";
 import { parsePreferencesFormData } from "@/lib/validation/profile";
 
@@ -12,7 +12,7 @@ export async function updateMePreferencesAction(
   formData: FormData,
 ): Promise<void> {
   await ensureNotOperator();
-  const session = await requireApprovedUser();
+  const session = await requireOnboardedUser();
   const input = parsePreferencesFormData(formData);
   await upsertFriendIdealAggregate({ friendId: session.friendId, ...input });
   redirect("/me");

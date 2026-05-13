@@ -45,7 +45,10 @@ export type Friend = {
   // 권장 정보
   birth_year: number | null;
   region: string | null;
+  /** 012 — 광역 region 의 구·시 세부. region 없이 detail 만 있는 상태는 CHECK 로 금지. */
+  region_detail: string | null;
   hometown: string | null;
+  hometown_detail: string | null;
   occupation: string | null;
   instagram: string | null;
   relationship_status: RelationshipStatus | null;

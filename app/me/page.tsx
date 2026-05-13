@@ -1,12 +1,14 @@
 import { UserShell } from "@/components/user/user-shell";
 import { StatusBanner } from "@/components/user/status-banner";
 import { MeSectionCard } from "@/components/user/me-section-card";
-import { requireApprovedUser } from "@/lib/auth/user";
+import { requireOnboardedUser } from "@/lib/auth/user";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { profileCompletion } from "@/lib/db/friends";
 import { getFriendIdealAggregate } from "@/lib/db/ideals";
 import { ensureStandardSurvey, listQuestionsBySurvey } from "@/lib/db/surveys";
 import { listAnswersForFriend } from "@/lib/db/answers";
 import { SITE_OWNER_ID } from "@/lib/auth/operator";
+import type { Friend } from "@/lib/types/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -14,35 +16,31 @@ export const dynamic = "force-dynamic";
  * V2 가입자 대시보드.
  * PRD §3.3.1 + §6.3 — 본인 정보 요약 + 분기 카드 3개.
  *
- * proxy 가드가 status='approved' 가입자만 진입시킨다. 운영자/pending/rejected 분기 X.
+ * proxy 가드 + `requireOnboardedUser` 가 status='approved' 또는
+ * (status='pending' + onboarding_step=null) 가입자만 진입시킨다 (011 §D1·D2).
+ * pending 가입자에게는 상단 배너로 심사 대기 안내 (011 §D4).
  */
 export default async function MePage() {
-  const user = await requireApprovedUser();
+  const user = await requireOnboardedUser();
 
   const service = createSupabaseServiceClient();
+  // 012 §D8 — V2.x 4 필드 (smoking/drinking/marriage_view/tattoo) 까지 동기화.
+  // profileCompletion 은 lib/db/friends 의 단일 함수를 재사용 (옵션 B).
   const { data: friend } = await service
     .from("friends")
     .select(
-      "name, birth_year, region, hometown, occupation, instagram, relationship_status, match_interest",
+      "name, birth_year, region, region_detail, hometown, hometown_detail, occupation, instagram, relationship_status, match_interest, smoking, drinking, marriage_view, tattoo",
     )
     .eq("id", user.friendId)
     .single();
 
-  // 프로필 완성도 — 권장 7 + 필수 4(고정) + 추천인 2(필수) = 13
-  // 필수는 이미 완료(가입 통과). 권장 7개 중 채운 갯수만 점수화.
-  const optionalFields = [
-    friend?.birth_year != null,
-    !!friend?.region,
-    !!friend?.hometown,
-    !!friend?.occupation,
-    !!friend?.instagram,
-    friend?.relationship_status != null,
-    friend?.match_interest != null,
-  ];
-  const optionalFilled = optionalFields.filter(Boolean).length;
-  // 필수 5(이름·성별·선호 성별·추천인 이름·관계) 항상 채워짐 + 권장 7 → 12 만점 + 가입 자체 1 = 13
-  const profileCompletion = 6 + optionalFilled;
-  const profileMax = 13;
+  // profileCompletion 함수는 Friend 전체 형태를 받지만 권장 11 + base 30 만 본다.
+  // 필수 5 (이름·성별·선호 성별·추천인 이름·관계) 는 가입 시점에 채워졌으므로
+  // base 30 으로 자연 인정. 결측 필드는 null/false 로 채워 호출한다.
+  const profilePct = profileCompletion({
+    ...(friend ?? {}),
+  } as unknown as Friend);
+  const profileMax = 100;
 
   // 이상형 작성 여부 — friend_ideals row 또는 1:N 중 하나라도 있으면 작성됨
   const ideal = await getFriendIdealAggregate(user.friendId);
@@ -76,12 +74,21 @@ export default async function MePage() {
               안녕하세요, <span className="text-pink-400">{userName}</span>님 🩷
             </h1>
           </div>
-          <StatusBanner
-            tone="approved"
-            icon="✅"
-            title="승인됨 — 매칭 풀에 합류했어요"
-            description="운영자가 잘 어울리는 분을 찾으면 카톡으로 알려드려요."
-          />
+          {user.status === "pending" ? (
+            <StatusBanner
+              tone="pending"
+              icon="🔍"
+              title="심사 대기 중이에요"
+              description="미리 채워두면 운영자가 더 빨리 검토해요. 결과가 나오면 직접 안내드릴게요."
+            />
+          ) : (
+            <StatusBanner
+              tone="approved"
+              icon="✅"
+              title="승인됨 — 매칭 풀에 합류했어요"
+              description="운영자가 잘 어울리는 분을 찾으면 직접 안내드려요."
+            />
+          )}
         </header>
 
         <div className="space-y-3">
@@ -90,11 +97,11 @@ export default async function MePage() {
             icon="🌸"
             title="내 프로필"
             description="기본 정보 보기 / 수정"
-            statusLabel={`${profileCompletion}/${profileMax} 채움`}
+            statusLabel={`${profilePct}/${profileMax} 채움`}
             statusTone={
-              profileCompletion === profileMax
+              profilePct === profileMax
                 ? "success"
-                : profileCompletion >= 8
+                : profilePct >= 60
                   ? "neutral"
                   : "warn"
             }
@@ -137,8 +144,8 @@ export default async function MePage() {
 
         <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 px-4 py-3 text-[12px] text-[var(--color-fg-muted)]">
           <p>
-            매칭은 운영자가 카톡으로 직접 안내해요. 사이트에서 따로 알림이 가지
-            않으니 카톡을 확인해주세요.
+            매칭은 운영자가 직접 안내해요. 사이트에는 따로 표시되지 않으니
+            안내를 기다려주세요.
           </p>
         </section>
 

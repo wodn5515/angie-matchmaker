@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { UserShell } from "@/components/user/user-shell";
 import { OnboardingProfileForm } from "@/app/onboarding/profile/profile-form";
-import { requireApprovedUser } from "@/lib/auth/user";
+import { requireOnboardedUser } from "@/lib/auth/user";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { updateMeProfileAction } from "./actions";
 
@@ -13,12 +13,12 @@ export const dynamic = "force-dynamic";
  * 폼은 온보딩 Step 1 의 `OnboardingProfileForm` 을 variant="edit" 으로 재사용.
  */
 export default async function MeProfilePage() {
-  const session = await requireApprovedUser();
+  const session = await requireOnboardedUser();
   const service = createSupabaseServiceClient();
   const { data: friend } = await service
     .from("friends")
     .select(
-      "name, gender, preferred_gender, recommender_name, recommender_relation, birth_year, region, hometown, occupation, instagram, relationship_status, match_interest, smoking, drinking, marriage_view, tattoo",
+      "name, gender, preferred_gender, recommender_name, recommender_relation, birth_year, region, region_detail, hometown, hometown_detail, occupation, instagram, relationship_status, match_interest, smoking, drinking, marriage_view, tattoo",
     )
     .eq("id", session.friendId)
     .single();

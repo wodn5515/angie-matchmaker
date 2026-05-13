@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { UserShell } from "@/components/user/user-shell";
 import { Button } from "@/components/ui/button";
-import { requireApprovedUser } from "@/lib/auth/user";
+import { requireOnboardedUser } from "@/lib/auth/user";
 import { ensureStandardSurvey, listChapters, listQuestionsBySurvey } from "@/lib/db/surveys";
 import { listAnswersForFriend } from "@/lib/db/answers";
 import { SITE_OWNER_ID } from "@/lib/auth/operator";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * 가입자가 본인 답변을 수정 가능 (1회용 제약 폐기).
  */
 export default async function MeSurveyPage() {
-  const session = await requireApprovedUser();
+  const session = await requireOnboardedUser();
   const standard = await ensureStandardSurvey(SITE_OWNER_ID);
   const [chapters, questions] = await Promise.all([
     listChapters(standard.id),

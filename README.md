@@ -1,18 +1,18 @@
 # matchmaker
 
-> 운영자(개인)가 검토자 역할만 맡는 모바일 웹 소개팅 서비스. 가입자는 Google 로 자가 가입해 본인 정보를 직접 채우고, 운영자는 비교 뷰에서 두 명을 살펴 매칭을 결정한 뒤 카톡 등 외부 채널로 양쪽을 연결한다.
+> 운영자(개인)가 검토자 역할만 맡는 모바일 웹 소개팅 서비스. 가입자는 Google 로 자가 가입해 본인 정보를 직접 채우고, 운영자는 비교 뷰에서 두 명을 살펴 매칭을 결정한 뒤 외부 채널로 양쪽을 직접 연결한다.
 
 ## ✨ 핵심 기능
 
 - **자가 가입 (Google OAuth)** — `/signup` 진입 → OAuth → 신규 가입자면 `/onboarding/profile` 로 라우팅
-- **3 step 온보딩** — Step 1 (필수: 이름·성별·성취향·추천인 + 권장 13: 인스타·출생연도·거주지역·출신지역·직업·연애상태·매칭관심도·흡연·음주·결혼관·문신) → Step 2 (이상형, 선택) → Step 3 (연애 성향 테스트, 선택)
+- **3 step 온보딩** — Step 1 (필수: 이름·성별·성취향·추천인 + 권장 13: 인스타·출생연도·거주지역(광역+구/시)·출신지역(광역+구/시)·직업·연애상태·매칭관심도·흡연·음주·결혼관·문신) → Step 2 (이상형, 선택) → Step 3 (연애 성향 테스트, 선택)
 - **운영자 심사** — 추천인 + 가입자 정보 + 이상형 + 설문 응답을 본 뒤 [✓ 승인] / [✗ 거절 + 비공개 메모]
 - **자기 페이지** — 가입자는 `/me` 에서 본인 프로필 / 이상형 / 설문 응답을 언제든 수정
 - **1:1 비교 뷰** — 메타데이터 비교 + **이상형 양방향 매칭** (A→B / B→A, 같음/일부/다름/중립 색상 단서, 흡연·음주·결혼관·문신 포함 8 항목) + 표준 설문 비교
 - **Pair 노트장** — 비교 메모 + 매칭 회고 (`introduced`, `outcome`, `outcome_memo`) 운영자 본인 회고용
 - **Black + Pink 다크 톤** — 운영자 측은 Linear / Vercel admin 결, 가입자 측은 부드러운 그라데이션 + 게이미피케이션
 
-자세한 사양은 [`docs/PRD.md`](./docs/PRD.md), 설계 결정은 [`docs/decisions/`](./docs/decisions/) (`000`~`006`) 참고.
+자세한 사양은 [`docs/PRD.md`](./docs/PRD.md), 설계 결정은 [`docs/decisions/`](./docs/decisions/) (`000`~`012`) 참고.
 
 ## 🛠 기술 스택
 
@@ -67,6 +67,7 @@ cp .env.example .env.local
    - [`supabase/migrations/0003_v2_self_signup.sql`](./supabase/migrations/0003_v2_self_signup.sql) (V2 자가 가입 전환 — friends 확장 + friend_ideals + 1:N 5 + survey_answers 키 변경 + V1 invitation 폐기)
    - [`supabase/migrations/0004_v2_1_followup.sql`](./supabase/migrations/0004_v2_1_followup.sql) (V2.1 후속 — `upsert_friend_ideal_aggregate` RPC + V1 컬럼 DROP 멱등성 가드)
    - [`supabase/migrations/0005_friends_self_traits.sql`](./supabase/migrations/0005_friends_self_traits.sql) (009 — friends 본인 자기 보고 4 항목: smoking/drinking/marriage_view/tattoo)
+   - [`supabase/migrations/0006_region_detail.sql`](./supabase/migrations/0006_region_detail.sql) (012 — 거주/출신 지역 2단계 세분화: friends.region_detail/hometown_detail + 이상형 detail PK 확장 + RPC split_part 분해)
 3. Authentication → Providers → Google 활성화 (OAuth Client ID/Secret 입력)
 4. Authentication → URL Configuration 에 redirect URL 등록 (`https://<your-app>.vercel.app/auth/callback`)
 5. 프로젝트 키 3개를 `.env.local` 에 복사
@@ -103,7 +104,8 @@ app/
 
 components/
 ├── ui/                      Button / Card / Input / Badge / Empty / Stepper /
-│                            TabBar / MultiSelectChip / RangeSlider / RankingPicker / Field
+│                            TabBar / MultiSelectChip / RangeSlider / RankingPicker /
+│                            RegionDetailPicker (012) / Field
 ├── operator/                Nav / FriendForm / SurveyEditor / FriendsStatusTabs /
 │                            FriendIdealSection / IdealMatchRow / ReviewActions /
 │                            DashboardWidgets / SurveysTabs / AnswerView
@@ -122,7 +124,8 @@ supabase/migrations/
 ├── 0002_friend_invitations.sql   (V1 — V2 에서 DROP)
 ├── 0003_v2_self_signup.sql       (V2 전환)
 ├── 0004_v2_1_followup.sql        (V2.1 후속 — upsert RPC + 멱등성 가드)
-└── 0005_friends_self_traits.sql  (009 — 본인 자기 보고 4 항목)
+├── 0005_friends_self_traits.sql  (009 — 본인 자기 보고 4 항목)
+└── 0006_region_detail.sql        (012 — 거주/출신 지역 2단계 세분화)
 
 tests/
 ├── unit/                    Vitest + RTL (proxy guard / auth-user / compare-ideal)
@@ -145,11 +148,11 @@ npx next build         # 프로덕션 빌드
 
 ## 🤝 운영 흐름
 
-1. **가입자**: `/login` → Google 로그인 → `/onboarding/profile` (이름·성별·성취향·추천인) → preferences/survey (skip 가능) → `/pending`
+1. **가입자**: `/login` → Google 로그인 → `/onboarding/profile` (이름·성별·성취향·추천인) → preferences/survey (skip 가능) → `/pending` (심사 대기 중에도 액션 카드로 `/me/*` 진입 가능 — 프로필·이상형·설문을 미리 채울 수 있음)
 2. **운영자**: `/` 대시보드에서 ⏳ 심사 대기 위젯 → 가입자 상세 (`/friends/[id]`) → [✓ 승인] / [✗ 거절 + 비공개 메모]
-3. **가입자**: 승인되면 `/me` 진입 가능. 본인 프로필 / 이상형 / 설문 응답 수정 가능
+3. **가입자**: 승인되면 `/me` 가 정식 대시보드. 본인 프로필 / 이상형 / 설문 응답 수정 가능
 4. **운영자**: 두 가입자 후보를 `/compare?a=&b=` 로 → 메타데이터 비교 + 이상형 양방향 매칭 색상 단서 + 표준 설문 비교 → Pair 메모 작성 → [💘 큐피드 발동]
-5. **운영자**: 카톡 등 외부 채널로 양쪽 인스타 ID 공유 → 진행 결과를 사이트의 Pair `outcome_memo` 에 회고
+5. **운영자**: 외부 채널로 양쪽 인스타 ID 공유 → 진행 결과를 사이트의 Pair `outcome_memo` 에 회고
 
 > 사이트는 매칭 진행 상태를 자동 추적하지 않는다. Pair 는 운영자 본인 회고 노트장이며, 사용자에게 자동 알림이 가지 않는다 (PRD §3.4.1 / §6.6).
 

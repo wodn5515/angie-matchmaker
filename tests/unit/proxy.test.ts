@@ -216,18 +216,11 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
     });
   });
 
-  describe("OAuth O + 가입자 + status=pending", () => {
-    it("/me/* 진입 시 /pending 으로 차단", () => {
-      const result = resolveGuardTarget({
-        pathname: "/me/profile",
-        user: { email: "user1@gmail.com" },
-        isOperator: false,
-        friend: { status: "pending", onboarding_step: null },
-      });
-      expect(result).toEqual({ type: "redirect", to: "/pending" });
-    });
+  describe("OAuth O + 가입자 + status=pending (온보딩 완료 — step=null)", () => {
+    // 011 §D1 — 온보딩 완료(step=null) + 심사 대기 사용자에게 /me/* 도 열어준다.
+    // 기존엔 모두 /pending 으로 redirect 됐던 행을 pass 로 뒤집는다.
 
-    it("/pending 진입은 통과", () => {
+    it("/pending 진입은 통과 (회귀 유지)", () => {
       const result = resolveGuardTarget({
         pathname: "/pending",
         user: { email: "user1@gmail.com" },
@@ -237,7 +230,68 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
       expect(result).toEqual({ type: "pass" });
     });
 
-    it("운영자 라우트 진입 시 /pending 으로 차단", () => {
+    it("/me 진입은 통과 (011 §D1 NEW)", () => {
+      const result = resolveGuardTarget({
+        pathname: "/me",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: null },
+      });
+      expect(result).toEqual({ type: "pass" });
+    });
+
+    it("/me/profile 진입은 통과 (011 §D1 NEW)", () => {
+      const result = resolveGuardTarget({
+        pathname: "/me/profile",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: null },
+      });
+      expect(result).toEqual({ type: "pass" });
+    });
+
+    it("/me/preferences 진입은 통과 (011 §D1 NEW)", () => {
+      const result = resolveGuardTarget({
+        pathname: "/me/preferences",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: null },
+      });
+      expect(result).toEqual({ type: "pass" });
+    });
+
+    it("/me/survey 진입은 통과 (011 §D1 NEW)", () => {
+      const result = resolveGuardTarget({
+        pathname: "/me/survey",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: null },
+      });
+      expect(result).toEqual({ type: "pass" });
+    });
+
+    it("/me/survey/0 (챕터 runner) 진입은 통과 (011 §D1 NEW)", () => {
+      const result = resolveGuardTarget({
+        pathname: "/me/survey/0",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: null },
+      });
+      expect(result).toEqual({ type: "pass" });
+    });
+
+    it("/onboarding/profile 진입은 여전히 /pending 으로 차단 (회귀 유지 — 온보딩 단계로 되돌릴 수 없음)", () => {
+      // 011 §D1 표 — pending + null + /onboarding/* → /pending 유지.
+      const result = resolveGuardTarget({
+        pathname: "/onboarding/profile",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: null },
+      });
+      expect(result).toEqual({ type: "redirect", to: "/pending" });
+    });
+
+    it("운영자 라우트 (/friends) 진입 시 /pending 으로 차단 (회귀 유지)", () => {
       const result = resolveGuardTarget({
         pathname: "/friends",
         user: { email: "user1@gmail.com" },
@@ -245,6 +299,50 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
         friend: { status: "pending", onboarding_step: null },
       });
       expect(result).toEqual({ type: "redirect", to: "/pending" });
+    });
+  });
+
+  describe("OAuth O + 가입자 + status=pending (온보딩 미완 — step != null) — 회귀 방지", () => {
+    // 011 §D1 — onboarding_step != null 인 경우엔 그대로 onboarding resume 으로 보낸다.
+    // 011 작업으로 절대 이 행이 함께 풀려선 안 된다.
+
+    it("step=1 + /me 진입 시 /onboarding/profile 로 redirect (회귀 유지)", () => {
+      const result = resolveGuardTarget({
+        pathname: "/me",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: 1 },
+      });
+      expect(result).toEqual({
+        type: "redirect",
+        to: "/onboarding/profile",
+      });
+    });
+
+    it("step=2 + /me/profile 진입 시 /onboarding/preferences 로 redirect (회귀 유지)", () => {
+      const result = resolveGuardTarget({
+        pathname: "/me/profile",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: 2 },
+      });
+      expect(result).toEqual({
+        type: "redirect",
+        to: "/onboarding/preferences",
+      });
+    });
+
+    it("step=3 + /me/survey 진입 시 /onboarding/survey 로 redirect (회귀 유지)", () => {
+      const result = resolveGuardTarget({
+        pathname: "/me/survey",
+        user: { email: "user1@gmail.com" },
+        isOperator: false,
+        friend: { status: "pending", onboarding_step: 3 },
+      });
+      expect(result).toEqual({
+        type: "redirect",
+        to: "/onboarding/survey",
+      });
     });
   });
 
