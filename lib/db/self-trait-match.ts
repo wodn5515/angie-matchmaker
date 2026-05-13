@@ -70,7 +70,9 @@ function matchSmoking(ideal: string, profile: string): SelfTraitMatchKind {
   if (ideal === "non_smoker_only") {
     return profile === "non_smoker" ? "same" : "different";
   }
-  return "different";
+  // 알려지지 않은 이상형 enum (CHECK 우회 / 향후 enum 확장) — 안전 fallback.
+  // "different" 로 떨어뜨리면 false-different 가 매칭 판단을 오도하므로 neutral.
+  return "neutral";
 }
 
 function matchDrinking(ideal: string, profile: string): SelfTraitMatchKind {
@@ -87,7 +89,8 @@ function matchDrinking(ideal: string, profile: string): SelfTraitMatchKind {
     // 다 OK — 본인 어떤 값이든 same
     return "same";
   }
-  return "different";
+  // 알려지지 않은 이상형 enum — 안전 fallback (matchSmoking 과 동일 정신).
+  return "neutral";
 }
 
 function matchMarriageView(
@@ -118,5 +121,6 @@ function matchTattoo(ideal: string, profile: string): SelfTraitMatchKind {
     if (profile === "none" || profile === "small") return "same";
     return "different";
   }
-  return "different";
+  // 알려지지 않은 이상형 enum — 안전 fallback (matchSmoking 과 동일 정신).
+  return "neutral";
 }
