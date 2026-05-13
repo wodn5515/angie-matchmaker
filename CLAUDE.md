@@ -228,6 +228,7 @@ V2.x 에서 추가 폐기된 라우트: `/signup` — 010-v2-unified-login 에�
 | `app/**`, `components/**`, `lib/**`, `supabase/migrations/**` | **`/work`** | 워크트리 → 디자이너·TDD 게이트 → 팀 spawn → peer 검증 → PR |
 | `README.md`, `CLAUDE.md`, `AGENTS.md`, `docs/**`, `.claude/**`, `.gitignore`, dev 도구 설정, CI 워크플로우 | **`/meta`** | 워크트리 → Lead 단독 작업 → PR (게이트·팀·peer 생략) |
 | 긴급 수정 (`master` 베이스) | **`/hotfix`** | stage 우회 |
+| prod 배포 (`stage` → `master`) | **`/deploy`** | 워크트리 없음 — Lead 가 master..stage diff 분석 후 release PR 본문(변경 요약·배포 전 체크리스트·검증 plan·관련 결정 로그) 자동 작성 + 생성 |
 
 판단 기준: **"이 변경이 사용자가 보는 화면·동작·데이터를 바꾸는가"** — 그러면 `/work`, 아니면 `/meta`. 애매하면 `/work` 가 안전.
 
