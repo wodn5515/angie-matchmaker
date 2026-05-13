@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireOperator } from "@/lib/auth/operator";
 import { updateFriend } from "@/lib/db/friends";
+import { RejectReasonSchema } from "@/lib/validation/reject-reason";
 
 /**
  * 운영자 가입자 심사 — 승인 / 거절 / 재심사 되돌리기.
@@ -26,10 +27,20 @@ export async function rejectFriendAction(
   formData: FormData,
 ): Promise<void> {
   const session = await requireOperator();
-  const reason = String(formData.get("rejected_reason") ?? "").trim();
+  // D3 — `notes` 와 동일 규약 (zod max(2000)). 비어있거나 trim 후 0자면 null 저장.
+  const raw = formData.get("rejected_reason");
+  // FormData.get 은 string | File | null — non-string 은 운영자 입력에 등장 불가지만
+  // 안전하게 undefined 로 normalize 한 뒤 schema 에 위임.
+  const parsed = RejectReasonSchema.safeParse(
+    typeof raw === "string" ? raw : undefined,
+  );
+  if (!parsed.success) {
+    throw new Error("거절 사유는 2000자 이하의 문자열이어야 합니다");
+  }
+  const trimmed = parsed.data ?? "";
   await updateFriend(session.userId, friendId, {
     status: "rejected",
-    rejected_reason: reason || null,
+    rejected_reason: trimmed.length > 0 ? trimmed : null,
   });
   revalidatePath(`/friends/${friendId}`);
   revalidatePath("/friends");
