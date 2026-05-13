@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { ensureNotOperator, getCurrentUser } from "@/lib/auth/user";
-import { upsertSurveyAnswer } from "@/lib/db/answers";
+import {
+  fetchAnswerableQuestion,
+  upsertSurveyAnswer,
+} from "@/lib/db/answers";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { SITE_OWNER_ID } from "@/lib/auth/operator";
 import { validateAnswerValue } from "@/lib/validation/answer-value";
-import type { QuestionType } from "@/lib/types/domain";
 
 /**
  * `/me/survey` chapter runner 가 호출하는 단발 답변 저장.
@@ -17,6 +19,9 @@ import type { QuestionType } from "@/lib/types/domain";
  *
  * 가입자 status 가 pending(온보딩 중) 이어도 답변 저장은 허용 — 온보딩 Step 3 에서
  * 챕터 runner 를 재사용하기 때문. approved 가입자는 본인 답변 수정에 그대로 사용.
+ *
+ * D7 의 inner-embed 한 join 은 `fetchAnswerableQuestion` 헬퍼로 추출 — 라운드-4
+ * 사용자 리뷰 🟡 #1 의 query helper 추출 (`lib/db/answers.ts`).
  */
 export async function saveMeAnswerAction(input: {
   questionId: string;
@@ -28,27 +33,24 @@ export async function saveMeAnswerAction(input: {
   // rejected 가입자는 페이지 진입은 막혀있지만 직접 server action POST 차단 (PRD §5.5).
   if (session.status === "rejected") return { ok: false, reason: "rejected" };
 
-  // 문항 소속 + 검증 메타 fetch (decisions/007 §D7).
-  // 3-hop (survey_questions → survey_chapters → surveys.owner_id) 검증을 한 join 으로
-  // 축약 — owner 당 표준 설문 1개 가정 (surveys.is_standard / is_active 정책) 하에 안전.
-  // PostgREST 의 embed 문법 (`survey_chapters!inner ( surveys!inner ( owner_id ) )`) 으로
-  // owner_id 가 SITE_OWNER_ID 가 아닌 question 은 결과 0행 → not_found 분기로 거절.
-  const service = createSupabaseServiceClient();
-  const { data: question, error: qErr } = await service
-    .from("survey_questions")
-    .select(
-      "id, chapter_id, type, options, survey_chapters!inner ( surveys!inner ( owner_id ) )",
-    )
-    .eq("id", input.questionId)
-    .eq("survey_chapters.surveys.owner_id", SITE_OWNER_ID)
-    .maybeSingle();
-  if (qErr) return { ok: false, reason: "db_error" };
+  // 문항 소속 + 검증 메타 fetch — `fetchAnswerableQuestion` 헬퍼가 D7 의
+  // PostgREST inner-embed 1-hop join 을 캡슐화. SITE_OWNER_ID 미일치 question 은
+  // 결과 null 로 자연 거절.
+  let question;
+  try {
+    question = await fetchAnswerableQuestion({
+      questionId: input.questionId,
+      ownerId: SITE_OWNER_ID,
+    });
+  } catch {
+    return { ok: false, reason: "db_error" };
+  }
   if (!question) return { ok: false, reason: "question_not_found" };
 
   // D1 — server side value validation
   const validation = validateAnswerValue(
     {
-      type: question.type as QuestionType,
+      type: question.type,
       options: question.options,
     },
     input.value,
