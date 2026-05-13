@@ -42,7 +42,6 @@ export async function GET(request: Request) {
   if (!code) {
     const target = resolveCallbackTarget({
       result: "fail",
-      isOperator: false,
       next,
     });
     return NextResponse.redirect(new URL(target, request.url));
@@ -53,7 +52,6 @@ export async function GET(request: Request) {
   if (error) {
     const target = resolveCallbackTarget({
       result: "fail",
-      isOperator: false,
       next,
     });
     return NextResponse.redirect(new URL(target, request.url));
@@ -62,7 +60,6 @@ export async function GET(request: Request) {
   // 운영자 / 가입자 분기는 proxy 가드에 위임.
   const target = resolveCallbackTarget({
     result: "ok",
-    isOperator: false,
     next,
   });
   return NextResponse.redirect(new URL(target, request.url));

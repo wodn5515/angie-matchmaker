@@ -3,13 +3,17 @@
  *
  * 결정 로그:
  *   - docs/decisions/007-v2-1-review-followup.md §D4 (시간순 — 도입 시점)
- *   - docs/decisions/010-v2-unified-login.md §D3·§D4 (현재 — `from` 제거)
+ *   - docs/decisions/010-v2-unified-login.md §D3·§D4 (현재 — `from` 제거 + `isOperator` 후속 제거)
  *
  * V2.1 단계에선 `?from=signup` 1-bit hint 로 콜백 실패 시 `/signup?error=oauth_failed` vs
  * `/login?error=oauth_failed` 를 분기했다. 010 결정으로 `/signup` 라우트가 폐기되고
  * `/login` 으로 진입점이 단일화되면서 `from` 파라미터의 retroactive 의미가 사라졌다.
  *
- * 새 시그니처는 OAuth 결과 + 운영자 여부 + `?next` 만 받아 단순화:
+ * PR #14 리뷰 nit #2 응대로 `isOperator` 도 제거됐다 — 본문이 한 번도 참조하지
+ * 않고 호출 사이트에서 항상 `false` 로 하드코딩되던 dead parameter. 010 §D3·§D4 의
+ * "콜백은 분기 안 함, proxy 가드에 위임" 의도를 시그니처가 그대로 드러내게 됐다.
+ *
+ * 새 시그니처는 OAuth 결과 + `?next` 만 받아 단순화:
  *
  *   - result='fail'                 → '/login?error=oauth_failed' (항상)
  *   - result='ok'                   → next 그대로 (proxy 가드가 friends row 보고 최종 분기)
@@ -21,8 +25,6 @@
 export type CallbackInput = {
   /** OAuth 결과 — code 누락 또는 exchangeCodeForSession 에러 시 'fail' */
   result: "ok" | "fail";
-  /** 성공 + 운영자 화이트리스트 통과 여부. fail 일 때는 무시. */
-  isOperator: boolean;
   /** `?next` 쿼리 값 — safeNext 통과한 안전 path. 기본 '/me'. */
   next: string;
 };
