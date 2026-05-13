@@ -5,7 +5,7 @@
  *
  *   OAuth | OPERATOR_EMAIL | friends row | status   | 결과
  *   ------+----------------+-------------+----------+---------------------
- *    X    | —              | —           | —        | /login or /signup
+ *    X    | —              | —           | —        | /login (통합 진입점)
  *    O    | ✓              | —           | —        | /(operator)/* OK
  *    O    | ✗              | 없음        | —        | /onboarding/profile
  *    O    | ✗              | 있음        | pending  | /pending 차단
@@ -15,8 +15,13 @@
  * 추가 엣지:
  *   - OAuth O + 화이트리스트 X + onboarding 진행 중 (step=2/3) → 해당 단계 라우트
  *   - 운영자가 /me/* 진입 시 / 로 리다이렉트 (운영자는 friends row 없음 — 가입자 라우트 부재)
- *   - 비로그인 사용자가 /signup 또는 /login 진입은 통과
+ *   - 비로그인 사용자가 /login 진입은 통과 (010 §D1 이후 단일 진입점)
  *   - /auth/callback 은 항상 통과 (OAuth 콜백)
+ *
+ * 010-v2-unified-login: `/signup` 라우트 폐기 + `/login` 단일 진입점 통합.
+ *   - `/signup` 은 더 이상 `PRE_AUTH_PUBLIC` 에 포함되지 않는다.
+ *   - 비로그인이 가입자 라우트 (/me, /onboarding) 진입 시 `/login` 으로 redirect
+ *     (이전엔 `/signup`).
  *
  * 가드 함수 인터페이스 가정 (worker 가 채울 모듈):
  *   import { resolveGuardTarget } from "@/lib/auth/guard";
@@ -59,24 +64,39 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
       expect(result).toEqual({ type: "redirect", to: "/login" });
     });
 
-    it("비로그인이 가입자 라우트 (/me) 진입 시 /signup 으로 리다이렉트", () => {
+    it("비로그인이 가입자 라우트 (/me) 진입 시 /login 으로 리다이렉트 (010 통합 진입점)", () => {
       const result = resolveGuardTarget({
         pathname: "/me",
         user: null,
         isOperator: false,
         friend: null,
       });
-      expect(result).toEqual({ type: "redirect", to: "/signup" });
+      expect(result).toEqual({ type: "redirect", to: "/login" });
     });
 
-    it("비로그인이 /signup 진입은 통과", () => {
+    it("비로그인이 가입자 온보딩 (/onboarding/profile) 진입 시 /login 으로 리다이렉트", () => {
+      // 010 §D1 — `/signup` 폐기 후 가입자 라우트 시도도 통합 진입점 `/login` 으로.
+      const result = resolveGuardTarget({
+        pathname: "/onboarding/profile",
+        user: null,
+        isOperator: false,
+        friend: null,
+      });
+      expect(result).toEqual({ type: "redirect", to: "/login" });
+    });
+
+    it("비로그인이 /signup 진입 시 /login 으로 리다이렉트 (010 §D1 폐기 — 호환성)", () => {
+      // 010 §D1 — 외부 링크/북마크 호환을 위해 `/signup` 은 가드 단에서 `/login` 으로
+      // 흡수. `PRE_AUTH_PUBLIC` 에 `/signup` 이 더 이상 포함되지 않으므로 자동으로
+      // "운영자 라우트" 분기로 들어가 `/login` 으로 redirect 됨 (또는 worker 가
+      // 명시적 `/signup` → `/login` 분기를 추가해도 동일 결과).
       const result = resolveGuardTarget({
         pathname: "/signup",
         user: null,
         isOperator: false,
         friend: null,
       });
-      expect(result).toEqual({ type: "pass" });
+      expect(result).toEqual({ type: "redirect", to: "/login" });
     });
 
     it("비로그인이 /login 진입은 통과", () => {
@@ -144,6 +164,18 @@ describe("proxy 가드 — PRD §5.5 인증·인가 매트릭스", () => {
     it("운영자가 가입자 온보딩 (/onboarding/profile) 진입 시 / 로 리다이렉트", () => {
       const result = resolveGuardTarget({
         pathname: "/onboarding/profile",
+        user: { email: "alice@gmail.com" },
+        isOperator: true,
+        friend: null,
+      });
+      expect(result).toEqual({ type: "redirect", to: "/" });
+    });
+
+    it("운영자가 폐기된 /signup 진입 시 / 로 리다이렉트 (010 §D1 호환)", () => {
+      // 010 §D1 — `/signup` 라우트 폐기. 로그인된 운영자가 외부 링크/북마크로
+      // 들어와도 운영자 대시보드 / 로 가는 게 자연.
+      const result = resolveGuardTarget({
+        pathname: "/signup",
         user: { email: "alice@gmail.com" },
         isOperator: true,
         friend: null,
