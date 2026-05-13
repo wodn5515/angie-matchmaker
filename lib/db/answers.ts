@@ -1,4 +1,5 @@
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import type { QuestionType } from "@/lib/types/domain";
 
 /**
  * V2 survey_answers — 가입자 본인 답변 upsert.
@@ -9,6 +10,55 @@ import { createSupabaseServiceClient } from "@/lib/supabase/server";
  * service-role 클라이언트 + 앱 레이어 인가. 호출 측에서 반드시 본인 row 검증
  * (`assertOwnFriendRow` / `requireOperator`) 선행.
  */
+
+/**
+ * SITE_OWNER 의 설문에 속한 question 한 건을 가져온다 (D7 의 1-hop join 축약).
+ *
+ * 결정 로그: docs/decisions/007-v2-1-review-followup.md §D7
+ *
+ * 기존 3-hop (survey_questions → survey_chapters → surveys.owner_id) 검증을
+ * PostgREST inner-embed 한 쿼리로 축약. embed 의 `!inner` 가 owner_id 미일치
+ * survey 를 prune → 다른 owner 의 question 은 결과 0행 → null 반환.
+ *
+ * value 검증 메타 (type / options) 도 함께 fetch 해 saveMeAnswerAction 이 D1
+ * validation 을 즉시 수행할 수 있게 한다.
+ *
+ * 호출 측 책임:
+ *   - SITE_OWNER 가입자 세션 검증 (`getCurrentUser` / `requireApprovedUser`)
+ *   - 운영자 우회 차단 (`ensureNotOperator`)
+ *   - 결과 null 처리 (question_not_found / question_owner_mismatch 둘 다 null)
+ */
+export async function fetchAnswerableQuestion(args: {
+  questionId: string;
+  ownerId: string;
+}): Promise<{
+  id: string;
+  chapter_id: string;
+  type: QuestionType;
+  options: unknown;
+} | null> {
+  const sb = createSupabaseServiceClient();
+  const { data, error } = await sb
+    .from("survey_questions")
+    // 마지막 embed (`survey_chapters!inner ( surveys!inner ( owner_id ) )`) 는
+    // join 가드 전용 — 반환 mapping 에는 쓰지 않는다. `!inner` 가 owner_id 미일치
+    // 행을 prune 해 query 가 0행으로 떨어지는 게 목적.
+    .select(
+      "id, chapter_id, type, options, survey_chapters!inner ( surveys!inner ( owner_id ) )",
+    )
+    .eq("id", args.questionId)
+    .eq("survey_chapters.surveys.owner_id", args.ownerId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    chapter_id: data.chapter_id as string,
+    type: data.type as QuestionType,
+    options: data.options,
+  };
+}
+
 export async function upsertSurveyAnswer(args: {
   friendId: string;
   questionId: string;

@@ -209,93 +209,32 @@ export type FriendIdealsUpsertInput = {
 /**
  * friend_ideals + 1:N 5개 테이블을 한 번에 갱신.
  *
- * Supabase JS 가 client 측 트랜잭션을 지원하지 않으므로 진짜 ACID 는 어렵다.
- * 차선: 1:N replace 5개를 먼저 수행하고 1:1 upsert 를 마지막에 둔다 —
- *   - 1:N 중간에 실패하면 1:1 (updated_at) 은 갱신되지 않아 재시도가 idempotent
- *   - 1:1 upsert 가 마지막에 성공하면 모든 row 가 정합 상태
+ * 한 plpgsql function `upsert_friend_ideal_aggregate` 을 RPC 로 호출해 모든 변경을
+ * 한 트랜잭션으로 묶는다 (decisions/007 §D2 + supabase/migrations/0004_v2_1_followup.sql).
+ * 부분 실패 시 데이터 손상이 가능했던 5+1 client 측 순차 호출을 단일 RTT 로 대체.
  *
- * 진짜 트랜잭션이 필요하면 향후 plpgsql RPC 로 전환.
+ * 외부 시그니처는 유지 — 호출 측 (server actions / 운영자 폼) 영향 없음.
  */
 export async function upsertFriendIdealAggregate(
   input: FriendIdealsUpsertInput,
 ): Promise<void> {
   const sb = createSupabaseServiceClient();
-  const {
-    friendId,
-    age_from,
-    age_to,
-    hometown_same_bonus,
-    smoking,
-    drinking,
-    marriage_timing,
-    tattoo,
-    free_text,
-    regions,
-    hometowns,
-    jobs,
-    personality_keywords,
-    priorities,
-  } = input;
-
-  // 1:N replace 유틸 — supabase 의 insert 제네릭에 통과 가능한 unknown[] cast.
-  async function replaceMulti(
-    table: string,
-    rows: Array<Record<string, unknown>>,
-  ): Promise<void> {
-    const del = await sb.from(table).delete().eq("friend_id", friendId);
-    if (del.error) throw del.error;
-    if (rows.length === 0) return;
-    // supabase 의 from(table).insert 는 string literal table 만 보면 정확한 타입을 잡는데,
-    // dynamic table 이름 + 일반 Record 입력은 자동 추론이 닿지 않는다 — unknown 캐스트로 통과.
-    const ins = await (sb.from(table) as ReturnType<typeof sb.from>).insert(
-      rows as unknown as never,
-    );
-    if (ins.error) throw ins.error;
-  }
-
-  // 1:N 다섯 테이블 replace 먼저 — 실패 시 throw 되며 1:1 까지 가지 않아 재시도 가능.
-  await replaceMulti(
-    "friend_ideal_regions",
-    regions.map((region) => ({ friend_id: friendId, region })),
-  );
-  await replaceMulti(
-    "friend_ideal_hometowns",
-    hometowns.map((hometown) => ({ friend_id: friendId, hometown })),
-  );
-  await replaceMulti(
-    "friend_ideal_jobs",
-    jobs.map((job) => ({ friend_id: friendId, job })),
-  );
-  await replaceMulti(
-    "friend_ideal_personality_keywords",
-    personality_keywords.map((keyword) => ({ friend_id: friendId, keyword })),
-  );
-  await replaceMulti(
-    "friend_ideal_priorities",
-    priorities.slice(0, 3).map((category, i) => ({
-      friend_id: friendId,
-      rank: i + 1,
-      category,
-    })),
-  );
-
-  // 1:1 마지막. updated_at 이 변하는 시점이 곧 정합 상태 진입 시점.
-  const idealsErr = (
-    await sb.from("friend_ideals").upsert(
-      {
-        friend_id: friendId,
-        age_from,
-        age_to,
-        hometown_same_bonus,
-        smoking,
-        drinking,
-        marriage_timing,
-        tattoo,
-        free_text,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "friend_id" },
-    )
-  ).error;
-  if (idealsErr) throw idealsErr;
+  const { error } = await sb.rpc("upsert_friend_ideal_aggregate", {
+    p_friend_id: input.friendId,
+    p_age_from: input.age_from,
+    p_age_to: input.age_to,
+    p_hometown_same_bonus: input.hometown_same_bonus,
+    p_smoking: input.smoking,
+    p_drinking: input.drinking,
+    p_marriage_timing: input.marriage_timing,
+    p_tattoo: input.tattoo,
+    p_free_text: input.free_text,
+    p_regions: input.regions,
+    p_hometowns: input.hometowns,
+    p_jobs: input.jobs,
+    p_personality_keywords: input.personality_keywords,
+    // priorities 는 SQL function 안에서 ordinality 로 rank 를 부여하므로 상위 3개만 전달.
+    p_priorities: input.priorities.slice(0, 3),
+  });
+  if (error) throw error;
 }

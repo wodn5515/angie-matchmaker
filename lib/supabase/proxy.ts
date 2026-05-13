@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveGuardTarget } from "@/lib/auth/guard";
+import { buildRedirectUrl, isAuthPath } from "@/lib/supabase/redirect";
 
 /**
  * V2 라우트 가드 + Supabase 세션 cookie 갱신을 한 번에 처리한다.
@@ -66,10 +67,11 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // /auth/* (OAuth callback / signout) 은 가드 자체가 always pass 분기 — 추가 조회 X.
-  // 세션 refresh 도 callback 라우트가 exchangeCodeForSession 안에서 자체 처리.
+  // /auth + /auth/* (OAuth callback / signout) 은 가드 자체가 always pass 분기 —
+  // 추가 조회 X. 세션 refresh 도 callback 라우트가 exchangeCodeForSession 에서 자체 처리.
+  // D9 — root `/auth` 도 sub-path 와 동일하게 매치 (가드 isPathOrPrefix 와 일관성).
   const pathname = request.nextUrl.pathname;
-  if (pathname.startsWith("/auth/")) {
+  if (isAuthPath(pathname)) {
     return response;
   }
 
@@ -118,9 +120,14 @@ export async function updateSession(request: NextRequest) {
   });
 
   if (target.type === "redirect") {
+    // D6 — 원본 search 보존 전략. `?error=oauth_failed` 등 안내 param 이 살아남는다.
     const url = request.nextUrl.clone();
-    url.pathname = target.to;
-    url.search = "";
+    const built = buildRedirectUrl({
+      originalSearch: request.nextUrl.search,
+      targetPath: target.to,
+    });
+    url.pathname = built.pathname;
+    url.search = built.search;
     return NextResponse.redirect(url);
   }
 

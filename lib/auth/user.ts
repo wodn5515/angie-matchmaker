@@ -9,6 +9,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  *
  * 운영자(`OPERATOR_EMAIL` 화이트리스트 통과 계정) 세션은 여기서 다루지 않는다.
  * 운영자는 `lib/auth/operator.ts` 의 `requireOperator()` 를 쓴다.
+ *
+ * decisions/007 §D8 — `getCurrentUser` 와 `ensureNotOperator` 가 각자 따로 하던
+ * `supabase.auth.getUser` 호출 코드 경로를 `fetchAuthAndOperatorStatus` 한 헬퍼로
+ * 통일했다. 외부 시그니처 그대로 유지. 실 RTT dedup 은 후속 request-scope 캐시
+ * (React `cache()` 또는 동등 메커니즘) 단계에서.
  */
 
 export type UserSession = {
@@ -26,6 +31,11 @@ type FriendRow = {
   auth_user_id: string;
   status: "pending" | "approved" | "rejected";
   onboarding_step: 1 | 2 | 3 | null;
+};
+
+type AuthAndOperatorStatus = {
+  authUser: { id: string; email: string } | null;
+  isOperator: boolean;
 };
 
 /**
@@ -56,6 +66,22 @@ async function loadAuthUser(): Promise<{ id: string; email: string } | null> {
   return { id: user.id, email: user.email ?? "" };
 }
 
+/**
+ * OAuth 세션 + 운영자 화이트리스트 통과 여부를 한 번에 평가하는 내부 헬퍼.
+ *
+ * `getCurrentUser`, `ensureNotOperator`, `requireApprovedUser` 등 여러 진입점이
+ * 같은 `supabase.auth.getUser` 호출을 따로 하던 중복을 한 곳으로 모은다.
+ * 한 server action / server component 안에서 두 helper 를 같이 부르더라도 호출
+ * 형태는 동일하지만 코드 경로가 일관 — 향후 request-scope 캐시 적용 시 진입점이 한 곳.
+ */
+async function fetchAuthAndOperatorStatus(): Promise<AuthAndOperatorStatus> {
+  const authUser = await loadAuthUser();
+  return {
+    authUser,
+    isOperator: authUser ? isOperatorEmailAtCall(authUser.email) : false,
+  };
+}
+
 async function loadOwnFriendRow(authUserId: string): Promise<FriendRow | null> {
   const sb = await createSupabaseServerClient();
   const { data } = await sb
@@ -71,7 +97,7 @@ async function loadOwnFriendRow(authUserId: string): Promise<FriendRow | null> {
  * 없으면 null. 운영자 세션의 경우에도 friends row 가 없으므로 null 반환.
  */
 export async function getCurrentUser(): Promise<UserSession | null> {
-  const authUser = await loadAuthUser();
+  const { authUser } = await fetchAuthAndOperatorStatus();
   if (!authUser) return null;
   const friend = await loadOwnFriendRow(authUser.id);
   if (!friend) return null;
@@ -93,7 +119,7 @@ export async function getCurrentUser(): Promise<UserSession | null> {
  * - status='rejected' → /rejected
  */
 export async function requireApprovedUser(): Promise<UserSession> {
-  const authUser = await loadAuthUser();
+  const { authUser } = await fetchAuthAndOperatorStatus();
   if (!authUser) {
     redirect("/signup");
   }
@@ -119,7 +145,7 @@ export async function requireApprovedUser(): Promise<UserSession> {
  * 호출해 우회 차단. 운영자는 본 메서드를 사용하지 않는다 (운영자는 `requireOperator()`).
  */
 export async function assertOwnFriendRow(friendId: string): Promise<void> {
-  const authUser = await loadAuthUser();
+  const { authUser } = await fetchAuthAndOperatorStatus();
   if (!authUser) {
     throw new Error("자가 가입자 세션이 없습니다");
   }
@@ -134,9 +160,8 @@ export async function assertOwnFriendRow(friendId: string): Promise<void> {
  * 운영자가 `auth.users` 세션을 갖고 가입자 페이지의 form action 을 호출할 경우 throw.
  */
 export async function ensureNotOperator(): Promise<void> {
-  const authUser = await loadAuthUser();
-  if (!authUser?.email) return;
-  if (isOperatorEmailAtCall(authUser.email)) {
+  const { isOperator } = await fetchAuthAndOperatorStatus();
+  if (isOperator) {
     throw new Error("운영자는 가입자 액션을 수행할 수 없습니다");
   }
 }

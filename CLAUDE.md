@@ -121,7 +121,7 @@ PRD §6 + 결정 로그 기준. **Black base + Pink accent 다크 톤**. 두 청
 
 ## 6. 데이터 모델
 
-PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql`).
+PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql` → `0004_v2_1_followup.sql`).
 
 | 테이블 | 역할 | 핵심 규칙 |
 |---|---|---|
@@ -142,7 +142,10 @@ V2 폐기 테이블 (0003 마이그레이션이 DROP):
 - `survey_invitations` (V1 토큰 흐름)
 - `friend_invitations` (V1 운영자 발급 자가 등록 토큰)
 
-V2 friends 에서 제거된 V1 컬럼: `closeness`, `how_we_met`, `kakao_id`, `phone`.
+V2 friends 에서 제거된 V1 컬럼: `closeness`, `how_we_met`, `kakao_id`, `phone` (0003에서 DROP, 0004에서 `if exists` 가드로 멱등성 보강).
+
+V2.1 신규 RPC function (0004 마이그레이션):
+- `upsert_friend_ideal_aggregate(p_friend_id uuid, ...)` — `friend_ideals` 1:1 upsert + 1:N 5개 (regions/hometowns/jobs/personality_keywords/priorities) replace 를 한 plpgsql 트랜잭션 안에서 처리. `lib/db/ideals.ts` 의 `upsertFriendIdealAggregate` 가 단일 RPC 로 호출.
 
 주요 규칙:
 - 모든 DB 호출은 `lib/db/*` 의 service-role 클라이언트로만 (RLS는 deny-all)
