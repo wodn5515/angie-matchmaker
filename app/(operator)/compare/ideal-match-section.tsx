@@ -7,6 +7,7 @@ import {
   compareIdealValues,
   type FriendIdealAggregate,
 } from "@/lib/db/ideals";
+import { compareSelfTrait } from "@/lib/db/self-trait-match";
 import {
   SMOKING_LABEL,
   DRINKING_LABEL,
@@ -15,6 +16,10 @@ import {
   getRegionLabel,
   getHometownLabel,
   getJobLabel,
+  getSmokingLabel,
+  getDrinkingLabel,
+  getMarriageViewLabel,
+  getTattooLabel,
 } from "@/lib/types/v2-options";
 import type { Friend } from "@/lib/types/domain";
 
@@ -24,8 +29,10 @@ import type { Friend } from "@/lib/types/domain";
  * A 의 이상형 vs B 의 프로필 (8 항목) + B 의 이상형 vs A 의 프로필 (8 항목).
  * 각 항목은 compareIdealValues 로 4종(same/partial/different/neutral) 분류.
  *
- * 일부 항목 (smoking/drinking/marriage_timing/tattoo) 은 V2 friends 컬럼에
- * 자기 보고가 없어 항상 neutral 로 표시됨 — V2.x 에서 profile 측 도입 시 확장.
+ * V2 (009) 부터 smoking/drinking/marriage_view/tattoo 도 friends 컬럼에 자기
+ * 보고가 들어와 양방향 매칭이 활성화된다. 이상형 enum 과 본인 enum 의 셋·카디
+ * 널리티가 달라 `compareSelfTrait` 가 항목별 매트릭스로 same/partial/different/
+ * neutral 을 판정한다.
  */
 export function IdealMatchSection({
   friendA,
@@ -127,17 +134,17 @@ function Direction({
     }),
   });
 
-  // 4. 흡연 — V2 friends 에 profile.smoking 미존재 → 항상 neutral
+  // 4. 흡연 — V2 (009) 부터 본인 컬럼 활성. compareSelfTrait 가 매트릭스 처리.
   rows.push({
     label: "흡연",
     idealText: ideals.ideals?.smoking
       ? SMOKING_LABEL[ideals.ideals.smoking]
       : "상관없음",
-    actualText: "—",
-    tone: compareIdealValues({
-      ideal: ideals.ideals?.smoking ?? null,
-      profile: null,
-      kind: "single",
+    actualText: target.smoking ? getSmokingLabel(target.smoking) : "—",
+    tone: compareSelfTrait({
+      idealValue: ideals.ideals?.smoking ?? null,
+      profileValue: target.smoking,
+      kind: "smoking",
     }),
   });
 
@@ -147,25 +154,27 @@ function Direction({
     idealText: ideals.ideals?.drinking
       ? DRINKING_LABEL[ideals.ideals.drinking]
       : "상관없음",
-    actualText: "—",
-    tone: compareIdealValues({
-      ideal: ideals.ideals?.drinking ?? null,
-      profile: null,
-      kind: "single",
+    actualText: target.drinking ? getDrinkingLabel(target.drinking) : "—",
+    tone: compareSelfTrait({
+      idealValue: ideals.ideals?.drinking ?? null,
+      profileValue: target.drinking,
+      kind: "drinking",
     }),
   });
 
-  // 6. 결혼 시점관
+  // 6. 결혼관 (이상형: marriage_timing / 본인: marriage_view — 셋이 같은 enum 도메인)
   rows.push({
-    label: "결혼 시점관",
+    label: "결혼관",
     idealText: ideals.ideals?.marriage_timing
       ? MARRIAGE_TIMING_LABEL[ideals.ideals.marriage_timing]
       : "상관없음",
-    actualText: "—",
-    tone: compareIdealValues({
-      ideal: ideals.ideals?.marriage_timing ?? null,
-      profile: null,
-      kind: "single",
+    actualText: target.marriage_view
+      ? getMarriageViewLabel(target.marriage_view)
+      : "—",
+    tone: compareSelfTrait({
+      idealValue: ideals.ideals?.marriage_timing ?? null,
+      profileValue: target.marriage_view,
+      kind: "marriage_view",
     }),
   });
 
@@ -190,11 +199,11 @@ function Direction({
     idealText: ideals.ideals?.tattoo
       ? TATTOO_LABEL[ideals.ideals.tattoo]
       : "상관없음",
-    actualText: "—",
-    tone: compareIdealValues({
-      ideal: ideals.ideals?.tattoo ?? null,
-      profile: null,
-      kind: "single",
+    actualText: target.tattoo ? getTattooLabel(target.tattoo) : "—",
+    tone: compareSelfTrait({
+      idealValue: ideals.ideals?.tattoo ?? null,
+      profileValue: target.tattoo,
+      kind: "tattoo",
     }),
   });
 

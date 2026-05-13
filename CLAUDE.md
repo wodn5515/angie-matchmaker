@@ -120,11 +120,11 @@ PRD §6 + 결정 로그 기준. **Black base + Pink accent 다크 톤**. 두 청
 
 ## 6. 데이터 모델
 
-PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql` → `0004_v2_1_followup.sql`).
+PRD §4 + 마이그레이션(`0001_init.sql` → `0002_friend_invitations.sql` → `0003_v2_self_signup.sql` → `0004_v2_1_followup.sql` → `0005_friends_self_traits.sql`).
 
 | 테이블 | 역할 | 핵심 규칙 |
 |---|---|---|
-| `friends` | 가입자 (V2 확장 후) | `auth_user_id UNIQUE` + `recommender_*` NOT NULL + `status` CHECK + `onboarding_step` (1/2/3/null) |
+| `friends` | 가입자 (V2 확장 후) | `auth_user_id UNIQUE` + `recommender_*` NOT NULL + `status` CHECK + `onboarding_step` (1/2/3/null) + **자기 보고 4 항목 (009: smoking/drinking/marriage_view/tattoo enum, nullable)** |
 | `friend_ideals` | 이상형 단일값 (1:1) | `friend_id` PK, ON DELETE CASCADE. smoking/drinking/marriage_timing/tattoo enum + age_from/age_to + hometown_same_bonus + free_text |
 | `friend_ideal_regions` | 선호 거주지역 다중 (1:N) | PRIMARY KEY (friend_id, region) |
 | `friend_ideal_hometowns` | 선호 출신지역 다중 (1:N) | PRIMARY KEY (friend_id, hometown) |
@@ -145,6 +145,9 @@ V2 friends 에서 제거된 V1 컬럼: `closeness`, `how_we_met`, `kakao_id`, `p
 
 V2.1 신규 RPC function (0004 마이그레이션):
 - `upsert_friend_ideal_aggregate(p_friend_id uuid, ...)` — `friend_ideals` 1:1 upsert + 1:N 5개 (regions/hometowns/jobs/personality_keywords/priorities) replace 를 한 plpgsql 트랜잭션 안에서 처리. `lib/db/ideals.ts` 의 `upsertFriendIdealAggregate` 가 단일 RPC 로 호출.
+
+009 신규 컬럼 (0005 마이그레이션):
+- `friends.smoking / drinking / marriage_view / tattoo` 4 컬럼 (모두 nullable + CHECK). 본인 자기 보고로 이상형 양방향 매칭에 사용 — `compareSelfTrait` (`lib/db/self-trait-match.ts`) 가 항목별 매트릭스로 same/partial/different/neutral 판정.
 
 주요 규칙:
 - 모든 DB 호출은 `lib/db/*` 의 service-role 클라이언트로만 (RLS는 deny-all)

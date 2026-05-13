@@ -64,6 +64,27 @@ export const ProfileSchema = z.object({
     .or(z.literal(""))
     .optional()
     .transform((v) => (v === "" || v == null ? null : v)),
+  // 자기 보고 4 항목 (009). 모두 선택 입력 — 이상형 매칭 대칭에 사용.
+  smoking: z
+    .enum(["non_smoker", "occasional", "regular"])
+    .or(z.literal(""))
+    .optional()
+    .transform((v) => (v === "" || v == null ? null : v)),
+  drinking: z
+    .enum(["non_drinker", "sometimes", "often"])
+    .or(z.literal(""))
+    .optional()
+    .transform((v) => (v === "" || v == null ? null : v)),
+  marriage_view: z
+    .enum(["within_2y", "over_3y", "dating_focus"])
+    .or(z.literal(""))
+    .optional()
+    .transform((v) => (v === "" || v == null ? null : v)),
+  tattoo: z
+    .enum(["none", "small", "large"])
+    .or(z.literal(""))
+    .optional()
+    .transform((v) => (v === "" || v == null ? null : v)),
 });
 
 export type ProfileInput = z.infer<typeof ProfileSchema>;

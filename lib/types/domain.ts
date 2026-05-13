@@ -25,6 +25,13 @@ export type MatchInterest = "high" | "medium" | "low" | "none";
 export type FriendStatus = "pending" | "approved" | "rejected";
 export type OnboardingStep = 1 | 2 | 3 | null;
 
+// 본인 프로필 4 항목 — 자기 상태 표현 (이상형 enum 과 분리).
+// 결정 로그: docs/decisions/009-v2-self-traits.md §D1
+export type SmokingSelf = "non_smoker" | "occasional" | "regular";
+export type DrinkingSelf = "non_drinker" | "sometimes" | "often";
+export type MarriageViewSelf = "within_2y" | "over_3y" | "dating_focus";
+export type TattooSelf = "none" | "small" | "large";
+
 export type Friend = {
   id: string;
   owner_id: string;
@@ -43,6 +50,11 @@ export type Friend = {
   instagram: string | null;
   relationship_status: RelationshipStatus | null;
   match_interest: MatchInterest | null;
+  // 자기 보고 4 항목 (009 — 이상형 매칭 대칭). 모두 선택 입력 / nullable.
+  smoking: SmokingSelf | null;
+  drinking: DrinkingSelf | null;
+  marriage_view: MarriageViewSelf | null;
+  tattoo: TattooSelf | null;
   // 추천인 (가입 시 필수 — server-side validation 으로 빈 문자열 거절)
   recommender_name: string;
   recommender_relation: string;

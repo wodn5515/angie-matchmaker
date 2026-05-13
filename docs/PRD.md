@@ -81,9 +81,11 @@ V1 의 "운영자가 친구 카드를 일일이 채우는 1인 CRM" 결은 폐�
 
 | Step | 라우트 | 필수 여부 | 내용 |
 |---|---|---|---|
-| 1 | `/onboarding/profile` | 필수 | 이름·성별·성취향·추천인(이름+관계) + 인스타·출생연도·거주지역·출신지역·직업·연애상태·매칭관심도 (선택) |
+| 1 | `/onboarding/profile` | 필수 | 이름·성별·성취향·추천인(이름+관계) + 인스타·출생연도·거주지역·출신지역·직업·연애상태·매칭관심도·**흡연·음주·결혼관·문신** (선택) |
 | 2 | `/onboarding/preferences` | 선택 (skip 가능) | "이런 분이면 좋겠어요" — 3단 구조 |
 | 3 | `/onboarding/survey` | 선택 (skip 가능) | 연애 성향 테스트 (V1 표준 설문 시스템 재활용) |
+
+> 권장 입력 (선택) 13 개 = 인스타·출생연도·거주지역·출신지역·직업·연애상태·매칭관심도 (이전 7) + 흡연·음주·결혼관·문신 (009 — 이상형 매칭 대칭). 자기 보고 4 항목은 비교 뷰의 양방향 이상형 매칭에 직접 쓰인다.
 
 - Step 1 완료 시점에 `friends` row 생성 (`status='pending'`, `onboarding_step=2` 또는 `null`)
 - Step 2·3 는 같은 row 의 컬럼·서브테이블에 채워나가기. skip 시 빈 채로
@@ -164,10 +166,11 @@ V1 의 "운영자가 친구 카드를 일일이 채우는 1인 CRM" 결은 폐�
 
 #### 3.4.2 비교 뷰 (`/compare?a=&b=`) 확장
 - V1 그대로 + 신규 섹션:
-  - **메타데이터 비교** (V1 같음·다름 색상 단서)
+  - **메타데이터 비교** (V1 같음·다름 색상 단서) — V2 (009) 부터 흡연·음주·결혼관·문신 4 항목 같이 표시
   - **이상형 매칭 — 양방향** (신규):
     - "민수의 이상형 ↔ 지영의 프로필" 색상 단서 (✅ same / ⚠️ partial / ❌ different / · neutral)
     - "지영의 이상형 ↔ 민수의 프로필" 같이 양방향
+    - V2 (009) 부터 흡연·음주·결혼관·문신 4 항목도 양방향 매칭 활성 (이상형 enum ↔ 본인 enum 매트릭스 — `compareSelfTrait`)
     - 성격 키워드 교집합 시각화 / 자유 텍스트 나란히
   - **표준 설문 답변 비교** (V1 그대로, 접기/펼치기)
   - **Pair 메모 / 큐피드** (V1 그대로)
@@ -228,6 +231,12 @@ friends
 ├─ instagram text                       -- 권장
 ├─ relationship_status enum             -- 권장
 ├─ match_interest enum                  -- 권장
+│
+│  -- 자기 보고 4 항목 (009 — 이상형 매칭 대칭). 모두 권장 / nullable.
+├─ smoking text                         -- ('non_smoker','occasional','regular')
+├─ drinking text                        -- ('non_drinker','sometimes','often')
+├─ marriage_view text                   -- ('within_2y','over_3y','dating_focus')
+├─ tattoo text                          -- ('none','small','large')
 │
 ├─ recommender_name text NOT NULL       -- 추천인 이름 (신규 필수)
 ├─ recommender_relation text NOT NULL   -- "대학 동기" 등 (신규 필수)
