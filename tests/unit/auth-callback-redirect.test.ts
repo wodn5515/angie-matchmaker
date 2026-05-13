@@ -1,114 +1,105 @@
 /**
- * D4 — OAuth 콜백 실패 시 redirect 분기 단위 테스트.
+ * D4 — OAuth 콜백 redirect 분기 단위 테스트 (010 + PR #14 리뷰 nit #2 응대 후 시그니처).
  *
- * 결정 로그: docs/decisions/007-v2-1-review-followup.md §D4
+ * 결정 로그:
+ *   - docs/decisions/007-v2-1-review-followup.md §D4 (시간순 — 도입 시점)
+ *   - docs/decisions/010-v2-unified-login.md §D3·§D4 (현재 — `from` 제거 + `isOperator` 후속 제거)
  *
- * 현재 구현은 OAuth 실패 시 항상 `/login?error=oauth_failed` 로 보낸다.
- * `/signup` 에서 들어온 가입자가 OAuth 실패 시 운영자 진입 페이지로 보내지는 부조화.
- * `/signup` 의 `signInWithOAuth` 에서 `redirectTo: ".../auth/callback?from=signup"`
- * 으로 1-bit hint 를 넣어, 콜백이 from 값으로 분기.
+ * 시그니처 진화:
  *
- * worker 가 채울 인터페이스 (순수 함수 — 단위 테스트 가능하게 분리):
+ *   V2.1 (007 §D4):
+ *     { result, from, isOperator, next } — `?from=signup` 1-bit hint round-trip 으로
+ *     실패 시 `/signup?error=oauth_failed` vs `/login?error=oauth_failed` 분기.
  *
- *   // 위치: app/auth/callback/route.ts 의 helper 로 export 또는
- *   //       lib/auth/callback.ts 같은 모듈로 분리 (Lead 자율 채택)
+ *   010 §D4 (PR #14 머지 직전):
+ *     { result, isOperator, next } — `/signup` 폐기로 `from` 사라짐. 단,
+ *     `isOperator` 는 "성공 + 운영자 화이트리스트 통과 여부" 로 형식상 보존.
+ *
+ *   010 §D4 + PR #14 리뷰 nit #2 (현재):
+ *     { result, next } — `resolveCallbackTarget` 본문이 `isOperator` 를 한 번도
+ *     참조하지 않고, route.ts 의 모든 호출 사이트가 `isOperator: false` 로 하드코딩
+ *     상태였음. 010 §D4 의 의도 자체가 "콜백은 운영자/가입자 분기를 자체 결정하지
+ *     않고 proxy 가드를 단일 진실원으로" — `isOperator` 파라미터는 의미가 없는
+ *     dead parameter 였다. 시그니처에서 제거해 의도를 그대로 노출.
+ *
+ *   // 위치: lib/auth/callback.ts
  *   export type CallbackInput = {
  *     /** OAuth 결과 — 코드 누락 또는 exchangeCodeForSession 에러 시 'fail' *\/
  *     result: "ok" | "fail";
- *     /** `?from` 쿼리 값. 없으면 null. 'signup' 외 값은 무시. *\/
- *     from: string | null;
- *     /** 성공 + 운영자 화이트리스트 통과 여부. fail 일 때는 무시. *\/
- *     isOperator: boolean;
- *     /** `?next` 쿼리 값 — safeNext 통과한 안전 path 또는 '/' fallback. *\/
+ *     /** `?next` 쿼리 값 — safeNext 통과한 안전 path. 기본 "/me". *\/
  *     next: string;
  *   };
  *
- *   /** 콜백 라우트가 NextResponse.redirect(...) 할 path 를 결정 *\/
  *   export function resolveCallbackTarget(input: CallbackInput): string;
  *
- * 결정 규칙:
- *   - result='fail' + from='signup'  → '/signup?error=oauth_failed'
- *   - result='fail' + from!=='signup'  → '/login?error=oauth_failed'
- *   - result='ok'   → next (proxy 가드가 추가 분기)
+ * 결정 규칙 (010 §D3·§D4 그대로 — 의미 변화 0):
+ *   - result='fail'   → '/login?error=oauth_failed' (항상)
+ *   - result='ok'     → next 그대로 (proxy 가드가 운영자/가입자/status 분기)
+ *
+ * 콜백은 더 이상 운영자/가입자 분기를 자체 결정하지 않는다 — proxy 가드를 단일
+ * 진실원으로 두는 008 §D1 정신과 정합. 콜백은 단순히 `next` sentinel 을 그대로
+ * 통과시키고 가드가 friends row 보고 정확한 path 로 다시 redirect.
  */
 
 import { describe, expect, it } from "vitest";
-// @ts-expect-error worker 가 아직 작성하지 않은 모듈 — 빨강 보장
 import { resolveCallbackTarget } from "@/lib/auth/callback";
 
-describe("resolveCallbackTarget — OAuth 콜백 redirect 분기 (D4)", () => {
-  describe("OAuth 실패", () => {
-    it("?from=signup → /signup?error=oauth_failed", () => {
+describe("resolveCallbackTarget — OAuth 콜백 redirect 분기 (010 + nit #2)", () => {
+  describe("OAuth 실패 — 항상 /login?error=oauth_failed", () => {
+    it("fail + next='/me' → /login?error=oauth_failed", () => {
       const target = resolveCallbackTarget({
         result: "fail",
-        from: "signup",
-        isOperator: false,
-        next: "/",
+        next: "/me",
       });
-      expect(target).toBe("/signup?error=oauth_failed");
+      expect(target).toBe("/login?error=oauth_failed");
     });
 
-    it("?from 없음 (null) → /login?error=oauth_failed", () => {
+    it("fail + next='/' → /login?error=oauth_failed (실패는 안내 페이지로 일관 fallback)", () => {
       const target = resolveCallbackTarget({
         result: "fail",
-        from: null,
-        isOperator: false,
         next: "/",
       });
       expect(target).toBe("/login?error=oauth_failed");
     });
 
-    it("?from 이 다른 값 → /login?error=oauth_failed (signup 외는 무시)", () => {
+    it("fail + next='/some/deep/path' → /login?error=oauth_failed (next 값과 무관)", () => {
       const target = resolveCallbackTarget({
         result: "fail",
-        from: "operator",
-        isOperator: false,
-        next: "/",
+        next: "/some/deep/path",
       });
       expect(target).toBe("/login?error=oauth_failed");
-    });
-
-    it("?from=signup 이면 isOperator 값 상관없이 /signup 으로", () => {
-      // 가입자가 운영자 이메일을 쓰는 우연 + OAuth 실패 — from 우선
-      const target = resolveCallbackTarget({
-        result: "fail",
-        from: "signup",
-        isOperator: true,
-        next: "/",
-      });
-      expect(target).toBe("/signup?error=oauth_failed");
     });
   });
 
-  describe("OAuth 성공", () => {
-    it("성공 + from=signup → next (proxy 가드가 추가 분기 결정)", () => {
+  describe("OAuth 성공 — next 통과 (proxy 가드가 최종 분기)", () => {
+    it("ok + next='/' → '/' (운영자 sentinel — 가드가 운영자면 그대로 통과)", () => {
+      // OAuth 진입 시점엔 운영자/가입자를 시스템적으로 모름.
+      // 콜백은 next 만 그대로 흘리고 proxy 가드가 OPERATOR_EMAIL 비교 + friends row
+      // 보고 최종 path 결정.
       const target = resolveCallbackTarget({
         result: "ok",
-        from: "signup",
-        isOperator: false,
         next: "/",
       });
       expect(target).toBe("/");
     });
 
-    it("성공 + 운영자 → next 그대로 (운영자 라우팅은 proxy 가드 책임)", () => {
+    it("ok + next='/me' → '/me' (가입자 sentinel — 가드가 status 보고 재분기)", () => {
+      // 가입자 정상 로그인 흐름. proxy 가드가 friends row 보고 정확한 path 로
+      // 다시 redirect (없으면 /onboarding/profile, pending 이면 /pending 등).
       const target = resolveCallbackTarget({
         result: "ok",
-        from: null,
-        isOperator: true,
-        next: "/",
-      });
-      expect(target).toBe("/");
-    });
-
-    it("성공 + next 가 별도 지정되면 그 값으로", () => {
-      const target = resolveCallbackTarget({
-        result: "ok",
-        from: null,
-        isOperator: false,
         next: "/me",
       });
       expect(target).toBe("/me");
+    });
+
+    it("ok + safeNext 통과한 임의 path → 그대로 (가드가 후속 분기 책임)", () => {
+      // /me/profile 같은 deep path 도 콜백에선 분기 안 함. 가드 단일 진실원.
+      const target = resolveCallbackTarget({
+        result: "ok",
+        next: "/me/profile",
+      });
+      expect(target).toBe("/me/profile");
     });
   });
 });

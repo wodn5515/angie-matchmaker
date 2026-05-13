@@ -77,8 +77,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-- 운영자: `/login` 에서 화이트리스트 Gmail 로 로그인 → `/` (관제실)
-- 가입자: `/signup` 에서 Google OAuth → 신규면 `/onboarding/profile`, 기존 승인 가입자면 `/me`
+- 운영자 / 가입자 모두: `/login` 단일 진입점에서 Google OAuth → 가드가 자동 분기
+  - 운영자 화이트리스트 통과 → `/` (관제실)
+  - 가입자 신규 → `/onboarding/profile`, 승인 → `/me`, 심사 대기 → `/pending`, 거절 → `/rejected`
 
 ## 📂 프로젝트 구조
 
@@ -91,14 +92,13 @@ app/
 │   ├── compare/             1:1 비교 뷰 (이상형 양방향 매칭 포함)
 │   ├── surveys/             표준 / 커스텀 설문 편집
 │   └── settings/
-├── signup/                  Google OAuth 시작
+├── login/                   OAuth 단일 진입점 (운영자·가입자 공용)
 ├── onboarding/{profile,preferences,survey}/   3-step 온보딩
 ├── me/                      가입자 자기 페이지
 │   ├── {profile,preferences}/
 │   └── survey/[chapter]/    챕터 runner (자동 저장)
 ├── pending/                 심사 대기 안내
 ├── rejected/                가입 거절 안내
-├── login/
 └── auth/{callback,signout}/
 
 components/
@@ -145,7 +145,7 @@ npx next build         # 프로덕션 빌드
 
 ## 🤝 운영 흐름
 
-1. **가입자**: `/signup` → Google 로그인 → `/onboarding/profile` (이름·성별·성취향·추천인) → preferences/survey (skip 가능) → `/pending`
+1. **가입자**: `/login` → Google 로그인 → `/onboarding/profile` (이름·성별·성취향·추천인) → preferences/survey (skip 가능) → `/pending`
 2. **운영자**: `/` 대시보드에서 ⏳ 심사 대기 위젯 → 가입자 상세 (`/friends/[id]`) → [✓ 승인] / [✗ 거절 + 비공개 메모]
 3. **가입자**: 승인되면 `/me` 진입 가능. 본인 프로필 / 이상형 / 설문 응답 수정 가능
 4. **운영자**: 두 가입자 후보를 `/compare?a=&b=` 로 → 메타데이터 비교 + 이상형 양방향 매칭 색상 단서 + 표준 설문 비교 → Pair 메모 작성 → [💘 큐피드 발동]

@@ -29,7 +29,7 @@ export default async function MeSurveyChapterPage({
   const { chapter: chapterId } = await params;
 
   const session = await getCurrentUser();
-  if (!session) redirect("/signup");
+  if (!session) redirect("/login");
   if (session.status === "rejected") redirect("/rejected");
 
   // 표준 설문 + 현 챕터

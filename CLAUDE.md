@@ -61,12 +61,11 @@ matchmaker/
 │   └── decisions/       # 000~006 + 작업별 NNN-<slug>.md
 ├── app/
 │   ├── (operator)/      # 인증 필요 라우트 그룹 (대시보드/가입자/비교/설문/설정)
-│   ├── signup/          # Google OAuth 가입 진입
+│   ├── login/           # OAuth 단일 진입점 (운영자·가입자 공용 — 010-v2-unified-login)
 │   ├── onboarding/      # 3-step 온보딩 (profile / preferences / survey)
 │   ├── me/              # 가입자 자기 페이지 (profile / preferences / survey/[chapter])
 │   ├── pending/         # 심사 대기 안내
 │   ├── rejected/        # 가입 거절 안내
-│   ├── login/           # 운영자 OAuth 진입
 │   └── auth/            # OAuth callback / signout
 ├── components/
 │   ├── ui/              # 자체 UI 프리미티브 (Button/Card/Input/Badge/Empty/Stepper/
@@ -169,7 +168,6 @@ V2.1 신규 RPC function (0004 마이그레이션):
 | `/surveys/standard` | 운영자 | 표준 설문 편집 |
 | `/surveys/custom/new`, `/surveys/custom/[id]` | 운영자 | 커스텀 설문 |
 | `/settings` | 운영자 | 운영자 설정 |
-| `/signup` | — | Google OAuth 가입 진입 |
 | `/onboarding/profile` | 가입자 (friends row 없음) | Step 1 (필수: 이름·성별·성취향·추천인) |
 | `/onboarding/preferences` | 가입자 (onboarding_step=2) | Step 2 (이상형, 선택) |
 | `/onboarding/survey` | 가입자 (onboarding_step=3) | Step 3 (연애 성향 테스트, 선택) |
@@ -180,9 +178,10 @@ V2.1 신규 RPC function (0004 마이그레이션):
 | `/me/survey/[chapter]` | 〃 | 챕터 runner (자동 저장) |
 | `/pending` | 가입자 (status=pending) | 심사 대기 안내 |
 | `/rejected` | 가입자 (status=rejected) | 가입 거절 안내 |
-| `/login`, `/auth/callback`, `/auth/signout` | — | OAuth (운영자·가입자 공용) |
+| `/login`, `/auth/callback`, `/auth/signout` | — | OAuth (운영자·가입자 공용 단일 진입점 — 010-v2-unified-login) |
 
 V2 에서 폐기된 V1 라우트: `/friends/new`, `/friends/invites`, `/surveys/send`, `/surveys/invitations`, `/matches`, `/r/[token]/**`, `/s/[token]/**`.
+V2.x 에서 추가 폐기된 라우트: `/signup` — 010-v2-unified-login 에서 `/login` 단일 진입점으로 통합. 외부 링크 호환을 위해 가드가 흡수 처리.
 
 라우팅 가드 매트릭스 (OAuth × 운영자 화이트리스트 × `friends.status` × `onboarding_step`) 는 `lib/auth/guard.ts` 의 `resolveGuardTarget` 순수 함수로 분리되어 있다 (PRD §5.5 + decisions/006).
 
@@ -248,7 +247,8 @@ V2 에서 폐기된 V1 라우트: `/friends/new`, `/friends/invites`, `/surveys/
 - 모든 작업은 `.worktrees/feature-<slug>` / `meta-<slug>` / `hotfix-<slug>` 에서 진행
 - `master` / `stage` 에 **직접 push 금지** (훅이 차단)
 - **force push 금지** (`--force`, `-f`, `+refs/*`)
-- `git reset --hard`, `git merge` 직접 수행 금지 (훅이 차단)
+- `git reset --hard` 직접 수행 금지 (훅이 차단)
+- `master` / `stage` 브랜치에서 `git merge` 직접 수행 금지 (훅이 차단) — 작업 브랜치 (`feature/*` / `hotfix/*` / `meta/*`) 에서 `origin/stage` 또는 `origin/master` 를 흡수해 conflict 를 해소하는 정상 동기화는 허용
 - PR 머지는 **사용자만** 수행
 
 ## 12. 환경 변수
@@ -335,7 +335,8 @@ docs/decisions/
 ## 14. 금지 사항 (요약)
 
 - `master` / `stage` 직접 push (훅 차단)
-- force push, `git reset --hard`, `git merge` 직접 수행 (훅 차단)
+- force push, `git reset --hard` 직접 수행 (훅 차단)
+- `master` / `stage` 브랜치에서 `git merge` 직접 수행 (훅 차단 — 작업 브랜치의 정상 conflict 해소는 허용)
 - PR 머지 (사용자만 수행)
 - 머지된 브랜치에 추가 push
 - 열린 PR이 있는데 같은 주제로 새 PR 생성
