@@ -139,3 +139,67 @@ decisions/005 가 V1 → V2 단절 전환에 한정해 단일 PR 권장. V2.1 �
 
 - V1 → V2 마이그레이션 cleanup (0003 의 `if exists` 부재가 retroactive 보강됐으므로 더는 retroactive 항목 없음)
 - E2E P1 8 케이스 storageState 픽스처 + 시드 셋업 (사용자 측 후속)
+
+## TDD 게이트 spec 채택 (test-writer 라운드 1 결과)
+
+test-writer 단발 호출 (커밋 `5da1b63`) 결과 전량 채택. 6 spec 파일 / 74 새 케이스 / 모두 빨강 / 기존 P0 84 케이스 초록 유지.
+
+### S1. spec 파일 채택
+
+| 결정 | 파일 | 케이스 |
+|---|---|---|
+| D1 | `tests/unit/me-answer-validation.test.ts` | 29 |
+| D2 + D5 | `tests/integration/migration-0004.test.ts` | 12 (RPC 정의 + V1 컬럼 if exists 가드) |
+| D2 | `tests/integration/ideal-aggregate-rpc.test.ts` | 4 (단일 RPC 호출 회귀) |
+| D3 | `tests/unit/reject-reason-validation.test.ts` | 11 |
+| D4 | `tests/unit/auth-callback-redirect.test.ts` | 7 |
+| D6 + D9 | `tests/unit/proxy-redirect-search.test.ts` | 11 |
+
+D7 (캐싱) + D8 (헬퍼 통합) 은 외부 동작 회귀 spec 으로 기존 P0 spec 이 방어. 별 신규 spec 없음.
+
+### S2. worker 가 채울 인터페이스 (시그니처 확정)
+
+```ts
+// 1. lib/validation/answer-value.ts
+export type AnswerValidationResult = { ok: true } | { ok: false; reason: string };
+export function validateAnswerValue(
+  question: { type: QuestionType; options: unknown },
+  value: unknown,
+): AnswerValidationResult;
+
+// 2. lib/auth/callback.ts (또는 route.ts 직접 export)
+export type CallbackInput = {
+  result: "ok" | "fail";
+  from: string | null;
+  isOperator: boolean;
+  next: string;
+};
+export function resolveCallbackTarget(input: CallbackInput): string;
+
+// 3. lib/validation/reject-reason.ts
+export const RejectReasonSchema = z.string().trim().max(2000).optional();
+
+// 4. lib/supabase/redirect.ts
+export function buildRedirectUrl(input: {
+  originalSearch: string;
+  targetPath: string;
+}): { pathname: string; search: string };
+export function isAuthPath(pathname: string): boolean;
+
+// 5. lib/db/ideals.ts — 외부 시그니처 유지, 내부만 RPC 단일 호출로
+//    sb.rpc("upsert_friend_ideal_aggregate", { ...payload })
+```
+
+### S3. 약화·범위 메모 — worker 가 알아야 할 자율 영역
+
+- **D5**: 0003 의 V1 폐기 테이블은 이미 `drop table if exists` 로 멱등 → spec 은 4개 컬럼 가드만 검증. 추가 가드 불필요.
+- **D6**: spec 이 "전체 query 보존" 전략 가정. worker 가 selective 전략 (예: `error`/`next` 만 보존) 채택하면 spec 약화 필요 — Lead 보고.
+- **D2 RPC 페이로드 키 네이밍**: 결정 로그가 정확한 SQL function 시그니처 미명세. spec 은 "friend_id 어떤 키든 OK + 1:N 값 페이로드 어딘가에 포함" 만 검증. worker 가 jsonb 1개 / 12 파라미터 / `p_friend_id` 접두 등 자유 채택.
+- **D7/D8**: 별도 spec 없이 기존 P0 가 회귀 방어. worker 가 외부 동작 안 깨뜨리면 통과.
+
+### S4. worker 프롬프트 필수 사항
+
+- 위 5개 인터페이스 시그니처 그대로 채우라
+- spec 약화 필요 시 Lead 보고 (D6 selective 전략 / D2 페이로드 형태)
+- 마이그레이션 `0004_v2_1_followup.sql` 는 RPC function + 0003 retroactive `drop column if exists` 가드 한 번 더
+- README + CLAUDE.md 사실 영역 동기화 — §6 데이터 모델만 (RPC function 추가 명시)
