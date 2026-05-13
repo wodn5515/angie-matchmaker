@@ -154,7 +154,7 @@ test-writer 단발 호출 (커밋 `5da1b63`) 결과 전량 채택. 6 spec 파일
 | D3 | `tests/unit/reject-reason-validation.test.ts` | 11 |
 | D4 | `tests/unit/auth-callback-redirect.test.ts` | 7 |
 | D6 + D9 | `tests/unit/proxy-redirect-search.test.ts` | 11 |
-| D7 (라운드-4 추가) | `tests/integration/answer-question-fetch.test.ts` | 10 (fetchAnswerableQuestion helper 회귀 spec — 사용자 🟡 #1 응대) |
+| D7 (라운드-4 추가) | `tests/integration/answer-question-fetch.test.ts` | 10 (사용자 🟡 #1 응대 — docstring §1~8 검증 포인트 + implementation guard 2개) |
 
 D7 (캐싱) + D8 (헬퍼 통합) 은 외부 동작 회귀 spec 으로 기존 P0 spec 이 방어. 별 신규 spec 없음.
 
