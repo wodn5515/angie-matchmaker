@@ -22,7 +22,7 @@ export default async function OnboardingProfilePage() {
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user?.id) redirect("/signup");
+  if (!user?.id) redirect("/login");
 
   const service = createSupabaseServiceClient();
   const { data: friend } = await service

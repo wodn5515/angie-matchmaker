@@ -61,21 +61,24 @@ describe("buildRedirectUrl — redirect 시 query 보존 (D6)", () => {
   });
 
   it("?next=/me 도 보존 (가드가 의미 갖지 않으면 무시되므로 안전)", () => {
+    // 010 §D1 — /signup 폐기 후 가입자 라우트 시도는 /login 으로 redirect.
     const result = buildRedirectUrl({
       originalSearch: "?next=/me",
-      targetPath: "/signup",
+      targetPath: "/login",
     });
-    expect(result.pathname).toBe("/signup");
+    expect(result.pathname).toBe("/login");
     expect(result.search).toContain("next=/me");
   });
 
   it("복수 param 도 모두 보존", () => {
+    // 010 통합: error 안내 + next 라우팅 hint 가 동시 보존되는 흐름.
+    // (`from` allowlist 는 D6 호환 유지 차원에서 keep — 010 이후엔 사실상 의미 없음.)
     const result = buildRedirectUrl({
-      originalSearch: "?error=oauth_failed&from=signup",
-      targetPath: "/signup",
+      originalSearch: "?error=oauth_failed&next=/me",
+      targetPath: "/login",
     });
     expect(result.search).toContain("error=oauth_failed");
-    expect(result.search).toContain("from=signup");
+    expect(result.search).toContain("next=/me");
   });
 
   it("targetPath 자체에 query 가 있으면 (예: /login?error=...) 그대로 통과", () => {

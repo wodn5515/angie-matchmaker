@@ -6,6 +6,11 @@
  * NextResponse.redirect / next() 로 변환한다.
  *
  * 순수 함수로 분리해 단위 테스트(`tests/unit/proxy.test.ts`) 가능하게 했다.
+ *
+ * 010-v2-unified-login: `/signup` 라우트 폐기 + `/login` 단일 진입점 통합.
+ *   - `PRE_AUTH_PUBLIC` 에서 `/signup` 제거 — `/login` 한 라우트만 공개
+ *   - 폐기된 `/signup` path 진입 시 비로그인은 `/login`, 운영자는 `/` 로 흡수 (외부 링크 호환)
+ *   - 비로그인이 가입자 라우트(/me, /onboarding) 진입 시 `/login` 으로 redirect (이전엔 `/signup`)
  */
 
 import {
@@ -33,7 +38,10 @@ export type GuardTarget =
   | { type: "redirect"; to: string };
 
 const AUTH_CALLBACK_PREFIX = "/auth";
-const PRE_AUTH_PUBLIC = ["/signup", "/login"];
+/** 010 §D1 — `/login` 단일 진입점 (이전: ["/signup", "/login"]). */
+const PRE_AUTH_PUBLIC = ["/login"];
+/** 010 §D1 — 폐기된 `/signup` 경로. 외부 링크/북마크 호환을 위해 흡수 처리. */
+const LEGACY_SIGNUP = "/signup";
 const PENDING_PREFIX = "/pending";
 const REJECTED_PREFIX = "/rejected";
 const ONBOARDING_PREFIX = "/onboarding";
@@ -48,11 +56,8 @@ function isAnyOf(pathname: string, targets: string[]): boolean {
   return targets.some((t) => isPathOrPrefix(pathname, t));
 }
 
-function isSignupUserRoute(pathname: string): boolean {
-  return (
-    isPathOrPrefix(pathname, ME_PREFIX) ||
-    isPathOrPrefix(pathname, ONBOARDING_PREFIX)
-  );
+function isLegacySignup(pathname: string): boolean {
+  return isPathOrPrefix(pathname, LEGACY_SIGNUP);
 }
 
 function isAnnouncementRoute(pathname: string): boolean {
@@ -74,17 +79,21 @@ export function resolveGuardTarget(input: GuardInput): GuardTarget {
   if (!user) {
     if (isAnyOf(pathname, PRE_AUTH_PUBLIC)) return { type: "pass" };
     if (isAnnouncementRoute(pathname)) return { type: "pass" };
-    // 가입자 라우트 진입 시도 → /signup, 운영자 라우트 진입 시도 → /login
-    if (isSignupUserRoute(pathname)) {
-      return { type: "redirect", to: "/signup" };
-    }
+    // 010 §D1 — 가입자 라우트 / 운영자 라우트 / 폐기된 `/signup` 모두 통합 진입점 `/login` 으로.
     return { type: "redirect", to: "/login" };
   }
 
   // ── OAuth + 운영자 ──────────────────────────────────────
   if (isOperator) {
-    // 가입자 라우트 / 안내 페이지 / 로그인·가입 페이지 진입 → / (운영자 대시보드)
-    if (isSignupUserRoute(pathname)) {
+    // 010 §D1 — 폐기된 `/signup` 진입은 운영자 대시보드 `/` 로 흡수.
+    if (isLegacySignup(pathname)) {
+      return { type: "redirect", to: "/" };
+    }
+    // 가입자 라우트 / 안내 페이지 / 로그인 페이지 진입 → / (운영자 대시보드)
+    if (
+      isPathOrPrefix(pathname, ME_PREFIX) ||
+      isPathOrPrefix(pathname, ONBOARDING_PREFIX)
+    ) {
       return { type: "redirect", to: "/" };
     }
     if (isAnnouncementRoute(pathname)) {
