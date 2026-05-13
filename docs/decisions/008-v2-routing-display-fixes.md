@@ -139,3 +139,44 @@ PRD §5.5 의 매트릭스가 "기본 케이스" 만 명세했고 path-status �
 
 - E2E P1 8 케이스 storageState 픽스처 + 시드 데이터 셋업
 - (decisions/007 의 V2.2 항목 그대로)
+
+## TDD 게이트 spec 채택 (test-writer 라운드 1 결과)
+
+test-writer 단발 호출 (커밋 `7744b04`) 결과 전량 채택. 2 spec 파일 / 22 케이스 / 빨강 14 / 통과 8 (기존 가드 line 127 이 일부 분기 이미 충족 — 회귀 방어선으로 유지).
+
+### S1. spec 파일 채택
+
+| 결정 | 파일 | 케이스 |
+|---|---|---|
+| D1 + D2 | `tests/unit/proxy-approved-redirects.test.ts` | 11 (D1 onboarding/pending/rejected 5 + D2 운영자 path 6) |
+| D3 + D4 | `tests/unit/options-labels.test.ts` | 11 (getRegionLabel + getJobLabel × 정상매핑 + fallback + null/undefined) |
+
+### S2. worker 가 채울 인터페이스
+
+```ts
+// lib/auth/guard.ts — resolveGuardTarget 시그니처 유지, 분기만 확장
+// approved + (/onboarding/* | /pending | /rejected | 운영자 path) → "/me" 로 redirect
+
+// lib/types/v2-options.ts — 신규 helper
+export function getRegionLabel(value: string | null | undefined): string;
+export function getJobLabel(value: string | null | undefined): string;
+// fallback: 매핑 미스 → raw value, null/undefined/빈 → ""
+```
+
+### S3. test-writer 진단 추가 정보
+
+`app/onboarding/survey/page.tsx` 등 페이지별 server component 에 **자체 redirect 로직 없음**. 사용자 보고의 "/pending → /onboarding/profile" 무한 체인은 **가드 매트릭스 단일 원인**. 페이지 코드는 깨끗 → 가드만 고치면 해결.
+
+### S4. 약화·범위 메모
+
+- D1 의 `/onboarding/survey` → spec 은 `/me` 로 고정. worker 가 `/me/survey` (sub-page) 가 더 자연하다고 판단하면 **Lead 보고 필수** — spec 약화 필요. PRD §5.1 의 가입자 측 라우트 표 (`/me/survey` 가 별 라우트로 존재) 와 정합성 검토 권한.
+- 다른 enum helper (gender / preferred_gender / relationship_status / match_interest) 는 spec 강제 X — worker 가 같은 패턴으로 추가 권장 (사용자 의도 "한글로 보이게 정합성 맞춰줘" 의 정신).
+- 페이지별 server component redirect 통합 spec 미작성 — 가드 단일 진실원 정신 + S3 진단으로 위험 작음.
+
+### S5. worker 프롬프트 필수 사항
+
+- 위 인터페이스 그대로 (가드 분기 + helper 2개) 채움
+- D1 `/onboarding/survey` 의 redirect target 이 `/me` 가 아닌 `/me/survey` 가 자연하다면 Lead 보고 후 spec 갱신
+- 라벨 helper 는 다른 enum 도 같은 패턴 확장 (gender / preferred_gender / relationship_status / match_interest)
+- 가입자 리스트 `app/(operator)/friends/page.tsx` 에서 helper 적용 — 디테일 페이지 (`/friends/[id]`) 와 정합 맞춤
+- README + CLAUDE.md 사실 영역 변경 없음 (라우팅 정합 fix 라 사이트맵 그대로)
