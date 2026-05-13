@@ -7,12 +7,12 @@
 - **자가 가입 (Google OAuth)** — `/login` 단일 진입점에서 OAuth → 신규 가입자면 `/onboarding/profile` 로 라우팅
 - **3 step 온보딩** — Step 1 (필수: 이름·성별·성취향·추천인 + 권장 13: 인스타·출생연도·거주지역(광역+구/시)·출신지역(광역+구/시)·직업·연애상태·매칭관심도·흡연·음주·결혼관·문신) → Step 2 (이상형, 선택) → Step 3 (연애 성향 테스트, 선택)
 - **운영자 심사** — 추천인 + 가입자 정보 + 이상형 + 연애 성향 테스트 응답을 본 뒤 [✓ 승인] / [✗ 거절 + 비공개 메모]
-- **자기 페이지** — 가입자는 `/me` 에서 본인 프로필 / 이상형 / 연애 성향 테스트 응답을 언제든 수정. 심사 대기 중이어도 `/me/*` 진입 가능 (상단 배너로 상태 안내)
+- **자기 페이지** — 가입자는 `/me` 에서 본인 프로필 / 이상형 / 연애 성향 테스트 응답을 언제든 수정. 심사 대기 중이어도 `/me/*` 진입 가능 (상단 배너로 상태 안내). 본문 마지막 "위험 영역" 에서 본인 이름 confirm 후 계정 hard delete 가능 (자식 6 테이블 + auth.users 모두 cascade 정리)
 - **1:1 비교 뷰** — 메타데이터 비교 + **이상형 양방향 매칭** (A→B / B→A, 같음/일부/다름/중립 색상 단서, 흡연·음주·결혼관·문신 포함 8 항목) + 연애 성향 테스트 비교
 - **Pair 노트장** — 비교 메모 + 매칭 회고 (`introduced`, `outcome`, `outcome_memo`) 운영자 본인 회고용
 - **Black + Pink 다크 톤** — 운영자 측은 Linear / Vercel admin 결, 가입자 측은 부드러운 그라데이션 + 게이미피케이션
 
-자세한 사양은 [`docs/PRD.md`](./docs/PRD.md), 설계 결정은 [`docs/decisions/`](./docs/decisions/) (`000`~`013`) 참고.
+자세한 사양은 [`docs/PRD.md`](./docs/PRD.md), 설계 결정은 [`docs/decisions/`](./docs/decisions/) (`000`~`014`) 참고.
 
 ## 🛠 기술 스택
 
@@ -108,7 +108,7 @@ components/
 ├── operator/                Nav / FriendForm / SurveyEditor / FriendsStatusTabs /
 │                            FriendIdealSection / IdealMatchRow / ReviewActions /
 │                            DashboardWidgets / SurveysTabs / AnswerView
-└── user/                    UserShell / OnboardingStepHeader / MeSectionCard / StatusBanner
+└── user/                    UserShell / OnboardingStepHeader / MeSectionCard / StatusBanner / DangerZone
 
 lib/
 ├── supabase/{server,client,proxy}.ts
@@ -157,4 +157,4 @@ npx next build         # 프로덕션 빌드
 
 ## 📜 V2 범위
 
-자동 매칭/LLM 분석, 자동 알림 인프라(이메일/SMS/푸시), 사이트 내 매칭 워크플로우, CSV 내보내기, 다국어, 다중 운영자 SaaS, 가입자 탈퇴/신고/차단은 V2 범위 밖 (PRD §1.3 / §9). 대부분 V2.x / V3 검토 후보.
+자동 매칭/LLM 분석, 자동 알림 인프라(이메일/SMS/푸시), 사이트 내 매칭 워크플로우, CSV 내보내기, 다국어, 다중 운영자 SaaS, 가입자 신고/차단은 V2 범위 밖 (PRD §1.3 / §9). 가입자 자가 탈퇴는 014 결정으로 V2.x 에 합류 (운영자 측 강제 hard delete 는 별 작업). 대부분 V2.x / V3 검토 후보.

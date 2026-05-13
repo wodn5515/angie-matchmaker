@@ -1,6 +1,7 @@
 import { UserShell } from "@/components/user/user-shell";
 import { StatusBanner } from "@/components/user/status-banner";
 import { MeSectionCard } from "@/components/user/me-section-card";
+import { DangerZone } from "@/components/user/danger-zone";
 import { requireOnboardedUser } from "@/lib/auth/user";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { profileCompletion } from "@/lib/db/friends";
@@ -141,6 +142,9 @@ export default async function MePage() {
             }
           />
         </div>
+
+        {/* 014 §D1 — 위험 영역 (계정 삭제) inline expandable. 본문 마지막, 로그아웃 form 위. */}
+        <DangerZone friendName={userName} />
 
         <form action="/auth/signout" method="post" className="text-center">
           <button

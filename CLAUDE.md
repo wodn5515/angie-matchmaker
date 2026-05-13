@@ -61,9 +61,9 @@ matchmaker/
 │   └── decisions/       # 000~006 + 작업별 NNN-<slug>.md
 ├── app/
 │   ├── (operator)/      # 인증 필요 라우트 그룹 (대시보드/가입자/비교/설문/설정)
-│   ├── login/           # OAuth 단일 진입점 (운영자·가입자 공용 — 010-v2-unified-login)
+│   ├── login/           # OAuth 단일 진입점 (운영자·가입자 공용 — 010-v2-unified-login). `?deleted=1` 시 자가 탈퇴 안내 배너 (014 §D5)
 │   ├── onboarding/      # 3-step 온보딩 (profile / preferences / survey)
-│   ├── me/              # 가입자 자기 페이지 (profile / preferences / survey/[chapter]). 심사 대기 시 상단 배너로 상태 안내 (013)
+│   ├── me/              # 가입자 자기 페이지 (profile / preferences / survey/[chapter] + actions.ts 의 deleteMeAccountAction). 심사 대기 시 상단 배너 (013) + 본문 마지막 위험 영역 (014)
 │   ├── rejected/        # 가입 거절 안내
 │   └── auth/            # OAuth callback / signout
 ├── components/
@@ -73,7 +73,7 @@ matchmaker/
 │   │                    #  SurveysTabs/FriendsStatusTabs/FriendIdealSection/
 │   │                    #  IdealMatchRow/ReviewActions/DashboardWidgets)
 │   └── user/            # 가입자 도메인 (UserShell/OnboardingStepHeader/
-│                        #  MeSectionCard/StatusBanner)
+│                        #  MeSectionCard/StatusBanner/DangerZone)
 ├── lib/
 │   ├── supabase/        # server/client/proxy
 │   ├── auth/            # operator / user / guard (V2 가드) / onboarding
@@ -178,7 +178,7 @@ V2.1 신규 RPC function (0004 마이그레이션):
 | `/onboarding/profile` | 가입자 (friends row 없음) | Step 1 (필수: 이름·성별·성취향·추천인) |
 | `/onboarding/preferences` | 가입자 (onboarding_step=2) | Step 2 (이상형, 선택) |
 | `/onboarding/survey` | 가입자 (onboarding_step=3) | Step 3 (연애 성향 테스트, 선택) |
-| `/me` | 가입자 (approved 또는 pending+step=null) | 자기 페이지 (대시보드) — pending 시 상단 배너 + 정직 카피 (013 §D3) |
+| `/me` | 가입자 (approved 또는 pending+step=null) | 자기 페이지 (대시보드) — pending 시 상단 배너 + 정직 카피 (013 §D3) + 본문 마지막 위험 영역 (계정 hard delete — 014 §D1) |
 | `/me/profile` | 〃 | 본인 프로필 수정 |
 | `/me/preferences` | 〃 | 이상형 수정 |
 | `/me/survey` | 〃 | 연애 성향 테스트 진행 / 재진입 |

@@ -10,11 +10,14 @@ export const metadata = { title: "matchmaker 시작하기" };
  * proxy 가드가 화이트리스트·friends row 보고 실제 라우팅 분기 (PRD §5.5).
  *
  * 카피 톤: "운영자 전용" → "모두 환영" — 처음 진입한 가입자에게도 어색하지 않게.
+ *
+ * 014 §D5 — `?deleted=1` query 가 정확히 "1" 일 때만 자가 탈퇴 안내 배너 노출.
+ * 임의 query (`?deleted=any`) 우회 차단 (error / reason enum 화 패턴과 동일).
  */
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; reason?: string }>;
+  searchParams: Promise<{ error?: string; reason?: string; deleted?: string }>;
 }) {
   const sp = await searchParams;
   const session = await getOperatorOrNull();
@@ -36,6 +39,14 @@ export default async function LoginPage({
             처음이신가요? Google 로 시작하면 자동으로 가입이 진행돼요.
           </p>
         </div>
+        {sp.deleted === "1" ? (
+          <div
+            role="status"
+            className="mb-4 rounded-xl border border-pink-500/30 bg-pink-500/[0.08] px-4 py-3 text-xs leading-relaxed text-pink-300"
+          >
+            계정이 삭제됐어요. 다시 가입하려면 Google 로 로그인해주세요.
+          </div>
+        ) : null}
         <LoginForm error={sp.error} reason={sp.reason} />
       </div>
     </main>
