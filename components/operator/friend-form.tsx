@@ -51,11 +51,11 @@ export function FriendForm({
   // 012 §D5 — region cascade (운영자 측 friend-form 도 같은 패턴).
   const [region, setRegion] = useState<string>(initial?.region ?? "");
   const [regionDetail, setRegionDetail] = useState<string>(
-    (initial as { region_detail?: string | null })?.region_detail ?? "",
+    initial?.region_detail ?? "",
   );
   const [hometown, setHometown] = useState<string>(initial?.hometown ?? "");
   const [hometownDetail, setHometownDetail] = useState<string>(
-    (initial as { hometown_detail?: string | null })?.hometown_detail ?? "",
+    initial?.hometown_detail ?? "",
   );
   const regionDetails = region
     ? REGION_DETAIL_OPTIONS[region as RegionCode] ?? []
