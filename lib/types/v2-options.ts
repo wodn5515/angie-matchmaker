@@ -189,6 +189,87 @@ export const getHometownLabel = makeLabelGetter(REGION_LABEL);
 export const getJobLabel = makeLabelGetter(JOB_LABEL);
 
 // ─────────────────────────────────────────────────────────────
+// 본인 프로필 4 항목 (009 — 자기 보고). 이상형 enum 셋과 분리.
+//
+// 이상형 enum 사전 (SMOKING_LABEL 등) 은 "any/non_smoker_only" 등
+// "이상형 측 표현". 본인 프로필 enum 사전은 "non_smoker/occasional/regular"
+// 등 "자기 상태". 의미 분리 명확히 위해 별 사전 + helper.
+// ─────────────────────────────────────────────────────────────
+
+import type {
+  SmokingSelf,
+  DrinkingSelf,
+  MarriageViewSelf,
+  TattooSelf,
+} from "@/lib/types/domain";
+
+/** 본인 흡연 사전 — 자기 상태. 이상형 SMOKING_LABEL 과 분리. */
+export const SELF_SMOKING_LABEL: Record<SmokingSelf, string> = {
+  non_smoker: "비흡연",
+  occasional: "가끔 핀다",
+  regular: "자주 핀다",
+};
+
+/** 본인 음주 사전. */
+export const SELF_DRINKING_LABEL: Record<DrinkingSelf, string> = {
+  non_drinker: "안 마심",
+  sometimes: "가끔",
+  often: "자주",
+};
+
+/** 본인 결혼관 사전. */
+export const SELF_MARRIAGE_VIEW_LABEL: Record<MarriageViewSelf, string> = {
+  within_2y: "1~2년 내 결혼",
+  over_3y: "3년 이후 결혼",
+  dating_focus: "연애 위주",
+};
+
+/** 본인 문신 사전. */
+export const SELF_TATTOO_LABEL: Record<TattooSelf, string> = {
+  none: "없음",
+  small: "작은 것",
+  large: "큰·여러 개",
+};
+
+/** 본인 흡연 코드 → 한글. 이상형 enum (non_smoker_only) 는 raw fallback. */
+export const getSmokingLabel = makeLabelGetter(SELF_SMOKING_LABEL);
+
+/** 본인 음주 코드 → 한글. */
+export const getDrinkingLabel = makeLabelGetter(SELF_DRINKING_LABEL);
+
+/** 본인 결혼관 코드 → 한글. */
+export const getMarriageViewLabel = makeLabelGetter(SELF_MARRIAGE_VIEW_LABEL);
+
+/** 본인 문신 코드 → 한글. 이상형 enum (none_only) 는 raw fallback. */
+export const getTattooLabel = makeLabelGetter(SELF_TATTOO_LABEL);
+
+// 본인 프로필 폼 option 배열 (Select / RadioGroup 용).
+// label 은 위 사전과 같은 텍스트를 그대로 재사용.
+export const SELF_SMOKING_OPTIONS = [
+  { value: "non_smoker", label: SELF_SMOKING_LABEL.non_smoker },
+  { value: "occasional", label: SELF_SMOKING_LABEL.occasional },
+  { value: "regular", label: SELF_SMOKING_LABEL.regular },
+] as const;
+
+export const SELF_DRINKING_OPTIONS = [
+  { value: "non_drinker", label: SELF_DRINKING_LABEL.non_drinker },
+  { value: "sometimes", label: SELF_DRINKING_LABEL.sometimes },
+  { value: "often", label: SELF_DRINKING_LABEL.often },
+] as const;
+
+export const SELF_MARRIAGE_VIEW_OPTIONS = [
+  { value: "within_2y", label: SELF_MARRIAGE_VIEW_LABEL.within_2y },
+  { value: "over_3y", label: SELF_MARRIAGE_VIEW_LABEL.over_3y },
+  { value: "dating_focus", label: SELF_MARRIAGE_VIEW_LABEL.dating_focus },
+] as const;
+
+export const SELF_TATTOO_OPTIONS = [
+  { value: "none", label: SELF_TATTOO_LABEL.none },
+  { value: "small", label: SELF_TATTOO_LABEL.small },
+  { value: "large", label: SELF_TATTOO_LABEL.large },
+] as const;
+
+// ─────────────────────────────────────────────────────────────
 // 출생연도 범위 (선호 나이대 RangeSlider 의 기본 범위)
 // ─────────────────────────────────────────────────────────────
 
