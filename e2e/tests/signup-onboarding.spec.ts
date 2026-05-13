@@ -1,10 +1,14 @@
 /**
- * E2E — 가입자 측 흐름: 가입 → 온보딩 Step 1~3 → /pending.
+ * E2E — 가입자 측 흐름: 가입 → 온보딩 Step 1~3 → /me (013 흡수 후).
  *
  * PRD §3.1 (가입 / 온보딩). Google OAuth 자체는 모킹 어려우므로 worker 가
  * `e2e/.auth/user-fresh.json` (신규 가입자, friends row 없음)
  * `e2e/.auth/user-pending.json` (Step 1 만 완료, status=pending)
  * 등의 storageState 픽스처를 마련해 두고 spec 에서 `test.use({ storageState })` 로 주입.
+ *
+ * 013 갱신 (docs/decisions/013-pending-deprecation.md §D1·§D2):
+ *   - `/pending` 라우트 폐기. 온보딩 Step 3 완료 시 redirect target 은 `/me`.
+ *   - 심사 대기 안내 자체는 `/me` 상단 StatusBanner (pending 분기) 가 인수.
  *
  * 이 P1 spec 은 worker 가 픽스처 + Server Action 까지 채우기 전엔 모두 실패.
  */
@@ -47,7 +51,7 @@ test.describe("가입자 측 — Step 1 (필수) 흐름", () => {
   });
 });
 
-test.describe("가입자 측 — Step 2/3 skip 가능 + /pending 안내", () => {
+test.describe("가입자 측 — Step 2/3 skip 가능 + /me 흡수 (013)", () => {
   test.use({ storageState: "e2e/.auth/user-step2.json" });
 
   test("Step 2 (preferences) skip 버튼 → /onboarding/survey 로 이동", async ({
@@ -59,16 +63,18 @@ test.describe("가입자 측 — Step 2/3 skip 가능 + /pending 안내", () => 
   });
 });
 
-test.describe("가입자 측 — Step 3 완료 후 /pending", () => {
+test.describe("가입자 측 — Step 3 완료 후 /me (013)", () => {
   test.use({ storageState: "e2e/.auth/user-step3.json" });
 
-  test("Step 3 skip → /pending 으로 이동 + 심사 대기 안내 노출", async ({
+  test("Step 3 skip → /me 로 이동 + 심사 대기 배너 노출 (013 §D1·§D3)", async ({
     page,
   }) => {
+    // 013 §D1 — `finishOnboardingSurveyAction` redirect target 이 `/pending` → `/me` 로 변경.
+    // 013 §D3 — 심사 대기 안내는 `/me` 상단 StatusBanner (pending 분기) 가 인수.
     await page.goto("/onboarding/survey");
     await page.getByRole("button", { name: /건너뛰기|skip/i }).click();
-    await expect(page).toHaveURL(/\/pending/);
-    await expect(page.getByText(/심사 중/)).toBeVisible();
+    await expect(page).toHaveURL(/\/me$/);
+    await expect(page.getByText(/심사 중|검토 중/)).toBeVisible();
   });
 });
 

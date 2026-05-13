@@ -32,7 +32,7 @@ export default async function CustomSurveyEditPage({
       <div>
         <p className="text-xs text-[var(--color-fg-muted)]">
           <Link href="/surveys" className="hover:text-fg">
-            설문
+            연애 성향 테스트
           </Link>
           <span className="mx-1">/</span> 커스텀
         </p>

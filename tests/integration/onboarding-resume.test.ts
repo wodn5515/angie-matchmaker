@@ -6,7 +6,7 @@
  * 시나리오:
  *   - Step 1 완료 시점에 friends row 생성 (status='pending', onboarding_step=2)
  *   - Step 2 skip 시 onboarding_step=3
- *   - Step 3 skip 또는 완료 시 onboarding_step=null (모두 끝)
+ *   - Step 3 skip 또는 완료 시 onboarding_step=null (모두 끝 → /me 흡수, 013)
  *   - 각 시점에 재진입 (/me 진입) → proxy 가드가 다음 단계로 자동 라우팅
  *
  * 구현 가정 (worker 가 채울 모듈):
@@ -47,7 +47,7 @@ describe("온보딩 이어풀기 — onboarding_step 으로 다음 단계 라우
     expect(target).toBe("/onboarding/survey");
   });
 
-  it("Step 3 skip/완료 (step=null, status=pending) → null (온보딩 끝, /pending 으로)", () => {
+  it("Step 3 skip/완료 (step=null, status=pending) → null (온보딩 끝, /me 흡수 — 013)", () => {
     const target = resolveOnboardingResumeTarget({
       friend: { status: "pending", onboarding_step: null },
     });

@@ -10,7 +10,8 @@ import { resolveCallbackTarget } from "@/lib/auth/callback";
  * proxy 가드가 실제 라우팅을 결정한다 (PRD §5.5):
  *   - 운영자 → /
  *   - 가입자 (friends row 없음) → /onboarding/profile
- *   - 가입자 (status=pending) → /onboarding/* 또는 /pending
+ *   - 가입자 (status=pending, 온보딩 중) → /onboarding/*
+ *   - 가입자 (status=pending, step=null) → /me (013 §D1, 심사 대기 배너)
  *   - 가입자 (status=approved) → /me
  *   - 가입자 (status=rejected) → /rejected
  *

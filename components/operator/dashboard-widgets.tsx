@@ -150,7 +150,7 @@ export function QuickJumpWidget() {
       <CardBody className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <QuickLink href="/friends" icon="👥" title="가입자 리스트" />
         <QuickLink href="/compare" icon="⚖️" title="비교 뷰" />
-        <QuickLink href="/surveys/standard" icon="📋" title="설문 편집" />
+        <QuickLink href="/surveys/standard" icon="📋" title="연애 성향 테스트 편집" />
       </CardBody>
     </Card>
   );

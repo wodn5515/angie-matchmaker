@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * 가입자 status (pending/approved/rejected) 안내 배너.
- * `/me` 상단·`/pending`·`/rejected` 페이지에서 사용.
+ * `/me` 상단 (pending+null 또는 approved) · `/rejected` 페이지에서 사용.
+ * 013 §D1·D2 — `/pending` 라우트 폐기 후 pending 가입자도 `/me` 본거지로 흡수.
  */
 export function StatusBanner({
   tone,

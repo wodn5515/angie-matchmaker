@@ -76,11 +76,11 @@ export function CompareView({
         >
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-fg">
-              표준 설문 답변 비교
+              연애 성향 테스트 답변 비교
             </h2>
             <p className="mt-0.5 text-[11px] text-[var(--color-fg-muted)]">
               {totalQuestions === 0
-                ? "표준 설문이 비어 있어요"
+                ? "연애 성향 테스트가 비어 있어요"
                 : `둘 다 응답한 문항 ${answeredBoth}/${totalQuestions}`}
             </p>
           </div>
@@ -98,7 +98,7 @@ export function CompareView({
           <CardBody className="space-y-5">
             {chapters.length === 0 ? (
               <p className="text-xs text-[var(--color-fg-muted)]">
-                표준 설문에 챕터가 없어요.
+                연애 성향 테스트에 챕터가 없어요.
               </p>
             ) : (
               chapters.map((c, ci) => {

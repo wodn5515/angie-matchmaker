@@ -1,11 +1,15 @@
 /**
  * lib/auth/user.ts — `requireOnboardedUser()` 신설 함수 단위 테스트 (011 §D2).
  *
- * 배경: `/me/*` 페이지·actions 는 그동안 `requireApprovedUser()` 를 호출해
- *   status='pending' 가입자를 `/pending` 으로 강제 redirect 했다. 011 작업은
- *   온보딩을 마친 pending 가입자에게도 `/me/*` 를 열어주기로 결정 (D1) 했고,
- *   페이지 레벨 게이트도 함께 풀어야 한다 (D2 — 가드만 풀면 페이지가 막아서 무한
- *   redirect 회귀).
+ * 배경: `/me/*` 페이지·actions 는 011 이전엔 `requireApprovedUser()` 를 호출해
+ *   status='pending' 가입자를 `/pending` 으로 강제 redirect 했다 (011 시점 회고).
+ *   011 작업은 온보딩을 마친 pending 가입자에게도 `/me/*` 를 열어주기로 결정 (D1)
+ *   했고, 페이지 레벨 게이트도 함께 풀어야 한다 (D2 — 가드만 풀면 페이지가 막아서
+ *   무한 redirect 회귀).
+ *
+ *   013 후속 (docs/decisions/013-pending-deprecation.md): `/pending` 라우트 자체가
+ *   폐기되어 pending+step=null 가입자의 본거지는 이제 `/me` 단일. 본 함수의 통과
+ *   조건은 011 그대로 유지 — pending+null 도 /me/* 통과.
  *
  * 신설 함수 인터페이스 (worker 가 채울 모듈):
  *

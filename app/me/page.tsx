@@ -1,6 +1,7 @@
 import { UserShell } from "@/components/user/user-shell";
 import { StatusBanner } from "@/components/user/status-banner";
 import { MeSectionCard } from "@/components/user/me-section-card";
+import { DangerZone } from "@/components/user/danger-zone";
 import { requireOnboardedUser } from "@/lib/auth/user";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { profileCompletion } from "@/lib/db/friends";
@@ -52,7 +53,7 @@ export default async function MePage() {
     ideal.personality_keywords.length > 0 ||
     ideal.priorities.length > 0;
 
-  // 설문 응답 완성도
+  // 연애 성향 테스트 응답 완성도
   const standard = await ensureStandardSurvey(SITE_OWNER_ID);
   const questions = await listQuestionsBySurvey(standard.id);
   const questionIds = questions.map((q) => q.id);
@@ -79,14 +80,14 @@ export default async function MePage() {
               tone="pending"
               icon="🔍"
               title="심사 대기 중이에요"
-              description="미리 채워두면 운영자가 더 빨리 검토해요. 결과가 나오면 직접 안내드릴게요."
+              description="운영자가 검토 중이에요. 미리 채워두면 매칭 풀에 더 빨리 합류할 수 있어요."
             />
           ) : (
             <StatusBanner
               tone="approved"
               icon="✅"
               title="승인됨 — 매칭 풀에 합류했어요"
-              description="운영자가 잘 어울리는 분을 찾으면 직접 안내드려요."
+              description="운영자가 잘 어울리는 분을 찾고 있어요."
             />
           )}
         </header>
@@ -142,12 +143,8 @@ export default async function MePage() {
           />
         </div>
 
-        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 px-4 py-3 text-[12px] text-[var(--color-fg-muted)]">
-          <p>
-            매칭은 운영자가 직접 안내해요. 사이트에는 따로 표시되지 않으니
-            안내를 기다려주세요.
-          </p>
-        </section>
+        {/* 014 §D1 — 위험 영역 (계정 삭제) inline expandable. 본문 마지막, 로그아웃 form 위. */}
+        <DangerZone friendName={userName} />
 
         <form action="/auth/signout" method="post" className="text-center">
           <button

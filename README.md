@@ -4,15 +4,15 @@
 
 ## ✨ 핵심 기능
 
-- **자가 가입 (Google OAuth)** — `/signup` 진입 → OAuth → 신규 가입자면 `/onboarding/profile` 로 라우팅
+- **자가 가입 (Google OAuth)** — `/login` 단일 진입점에서 OAuth → 신규 가입자면 `/onboarding/profile` 로 라우팅
 - **3 step 온보딩** — Step 1 (필수: 이름·성별·성취향·추천인 + 권장 13: 인스타·출생연도·거주지역(광역+구/시)·출신지역(광역+구/시)·직업·연애상태·매칭관심도·흡연·음주·결혼관·문신) → Step 2 (이상형, 선택) → Step 3 (연애 성향 테스트, 선택)
-- **운영자 심사** — 추천인 + 가입자 정보 + 이상형 + 설문 응답을 본 뒤 [✓ 승인] / [✗ 거절 + 비공개 메모]
-- **자기 페이지** — 가입자는 `/me` 에서 본인 프로필 / 이상형 / 설문 응답을 언제든 수정
-- **1:1 비교 뷰** — 메타데이터 비교 + **이상형 양방향 매칭** (A→B / B→A, 같음/일부/다름/중립 색상 단서, 흡연·음주·결혼관·문신 포함 8 항목) + 표준 설문 비교
+- **운영자 심사** — 추천인 + 가입자 정보 + 이상형 + 연애 성향 테스트 응답을 본 뒤 [✓ 승인] / [✗ 거절 + 비공개 메모]
+- **자기 페이지** — 가입자는 `/me` 에서 본인 프로필 / 이상형 / 연애 성향 테스트 응답을 언제든 수정. 심사 대기 중이어도 `/me/*` 진입 가능 (상단 배너로 상태 안내). 본문 마지막 "위험 영역" 에서 본인 이름 confirm 후 계정 hard delete 가능 (자식 6 테이블 + auth.users 모두 cascade 정리)
+- **1:1 비교 뷰** — 메타데이터 비교 + **이상형 양방향 매칭** (A→B / B→A, 같음/일부/다름/중립 색상 단서, 흡연·음주·결혼관·문신 포함 8 항목) + 연애 성향 테스트 비교
 - **Pair 노트장** — 비교 메모 + 매칭 회고 (`introduced`, `outcome`, `outcome_memo`) 운영자 본인 회고용
 - **Black + Pink 다크 톤** — 운영자 측은 Linear / Vercel admin 결, 가입자 측은 부드러운 그라데이션 + 게이미피케이션
 
-자세한 사양은 [`docs/PRD.md`](./docs/PRD.md), 설계 결정은 [`docs/decisions/`](./docs/decisions/) (`000`~`012`) 참고.
+자세한 사양은 [`docs/PRD.md`](./docs/PRD.md), 설계 결정은 [`docs/decisions/`](./docs/decisions/) (`000`~`014`) 참고.
 
 ## 🛠 기술 스택
 
@@ -80,7 +80,7 @@ npm run dev
 
 - 운영자 / 가입자 모두: `/login` 단일 진입점에서 Google OAuth → 가드가 자동 분기
   - 운영자 화이트리스트 통과 → `/` (관제실)
-  - 가입자 신규 → `/onboarding/profile`, 승인 → `/me`, 심사 대기 → `/pending`, 거절 → `/rejected`
+  - 가입자 신규 → `/onboarding/profile`, 승인 / 심사 대기 → `/me` (심사 대기는 상단 배너로 안내), 거절 → `/rejected`
 
 ## 📂 프로젝트 구조
 
@@ -89,16 +89,15 @@ app/
 ├── (operator)/              운영자 라우트 그룹 (OPERATOR_EMAIL 화이트리스트 필수)
 │   ├── page.tsx             대시보드 (심사 대기 / 가입자 현황 / 빠른 진입)
 │   ├── friends/             가입자 리스트 (sub-tab: 전체 / 심사 대기 / 승인 / 거절)
-│   │   └── [id]/            가입자 상세 (기본 + 이상형 + 설문 응답 + ReviewActions)
+│   │   └── [id]/            가입자 상세 (기본 + 이상형 + 연애 성향 테스트 응답 + ReviewActions)
 │   ├── compare/             1:1 비교 뷰 (이상형 양방향 매칭 포함)
-│   ├── surveys/             표준 / 커스텀 설문 편집
+│   ├── surveys/             표준 / 커스텀 연애 성향 테스트 편집
 │   └── settings/
 ├── login/                   OAuth 단일 진입점 (운영자·가입자 공용)
 ├── onboarding/{profile,preferences,survey}/   3-step 온보딩
-├── me/                      가입자 자기 페이지
+├── me/                      가입자 자기 페이지 (심사 대기 시 상단 배너로 상태 안내)
 │   ├── {profile,preferences}/
 │   └── survey/[chapter]/    챕터 runner (자동 저장)
-├── pending/                 심사 대기 안내
 ├── rejected/                가입 거절 안내
 └── auth/{callback,signout}/
 
@@ -109,7 +108,7 @@ components/
 ├── operator/                Nav / FriendForm / SurveyEditor / FriendsStatusTabs /
 │                            FriendIdealSection / IdealMatchRow / ReviewActions /
 │                            DashboardWidgets / SurveysTabs / AnswerView
-└── user/                    UserShell / OnboardingStepHeader / MeSectionCard / StatusBanner
+└── user/                    UserShell / OnboardingStepHeader / MeSectionCard / StatusBanner / DangerZone
 
 lib/
 ├── supabase/{server,client,proxy}.ts
@@ -148,14 +147,14 @@ npx next build         # 프로덕션 빌드
 
 ## 🤝 운영 흐름
 
-1. **가입자**: `/login` → Google 로그인 → `/onboarding/profile` (이름·성별·성취향·추천인) → preferences/survey (skip 가능) → `/pending` (심사 대기 중에도 액션 카드로 `/me/*` 진입 가능 — 프로필·이상형·설문을 미리 채울 수 있음)
+1. **가입자**: `/login` → Google 로그인 → `/onboarding/profile` (이름·성별·성취향·추천인) → preferences/survey (skip 가능) → `/me` (심사 대기 중에도 그대로 머무르며 프로필·이상형·연애 성향 테스트를 미리 채울 수 있음 — 상단 배너로 상태 안내)
 2. **운영자**: `/` 대시보드에서 ⏳ 심사 대기 위젯 → 가입자 상세 (`/friends/[id]`) → [✓ 승인] / [✗ 거절 + 비공개 메모]
-3. **가입자**: 승인되면 `/me` 가 정식 대시보드. 본인 프로필 / 이상형 / 설문 응답 수정 가능
-4. **운영자**: 두 가입자 후보를 `/compare?a=&b=` 로 → 메타데이터 비교 + 이상형 양방향 매칭 색상 단서 + 표준 설문 비교 → Pair 메모 작성 → [💘 큐피드 발동]
+3. **가입자**: 승인되어도 `/me` 가 그대로 본거지. 본인 프로필 / 이상형 / 연애 성향 테스트 응답 수정 가능
+4. **운영자**: 두 가입자 후보를 `/compare?a=&b=` 로 → 메타데이터 비교 + 이상형 양방향 매칭 색상 단서 + 연애 성향 테스트 비교 → Pair 메모 작성 → [💘 큐피드 발동]
 5. **운영자**: 외부 채널로 양쪽 인스타 ID 공유 → 진행 결과를 사이트의 Pair `outcome_memo` 에 회고
 
 > 사이트는 매칭 진행 상태를 자동 추적하지 않는다. Pair 는 운영자 본인 회고 노트장이며, 사용자에게 자동 알림이 가지 않는다 (PRD §3.4.1 / §6.6).
 
 ## 📜 V2 범위
 
-자동 매칭/LLM 분석, 자동 알림 인프라(이메일/SMS/푸시), 사이트 내 매칭 워크플로우, CSV 내보내기, 다국어, 다중 운영자 SaaS, 가입자 탈퇴/신고/차단은 V2 범위 밖 (PRD §1.3 / §9). 대부분 V2.x / V3 검토 후보.
+자동 매칭/LLM 분석, 자동 알림 인프라(이메일/SMS/푸시), 사이트 내 매칭 워크플로우, CSV 내보내기, 다국어, 다중 운영자 SaaS, 가입자 신고/차단은 V2 범위 밖 (PRD §1.3 / §9). 가입자 자가 탈퇴는 014 결정으로 V2.x 에 합류 (운영자 측 강제 hard delete 는 별 작업). 대부분 V2.x / V3 검토 후보.
