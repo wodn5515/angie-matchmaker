@@ -40,6 +40,9 @@ export async function fetchAnswerableQuestion(args: {
   const sb = createSupabaseServiceClient();
   const { data, error } = await sb
     .from("survey_questions")
+    // 마지막 embed (`survey_chapters!inner ( surveys!inner ( owner_id ) )`) 는
+    // join 가드 전용 — 반환 mapping 에는 쓰지 않는다. `!inner` 가 owner_id 미일치
+    // 행을 prune 해 query 가 0행으로 떨어지는 게 목적.
     .select(
       "id, chapter_id, type, options, survey_chapters!inner ( surveys!inner ( owner_id ) )",
     )

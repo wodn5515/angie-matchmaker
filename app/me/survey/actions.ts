@@ -36,7 +36,7 @@ export async function saveMeAnswerAction(input: {
   // 문항 소속 + 검증 메타 fetch — `fetchAnswerableQuestion` 헬퍼가 D7 의
   // PostgREST inner-embed 1-hop join 을 캡슐화. SITE_OWNER_ID 미일치 question 은
   // 결과 null 로 자연 거절.
-  let question;
+  let question: Awaited<ReturnType<typeof fetchAnswerableQuestion>>;
   try {
     question = await fetchAnswerableQuestion({
       questionId: input.questionId,
