@@ -55,7 +55,9 @@ create or replace function upsert_friend_ideal_aggregate(
 language plpgsql
 as $$
 begin
-  -- 1:1 friend_ideals 는 upsert (updated_at 갱신은 trigger 가 처리)
+  -- 1:1 friend_ideals 는 upsert.
+  -- updated_at 은 column default `now()` (INSERT) + BEFORE UPDATE trigger
+  -- `trg_friend_ideals_updated` (UPDATE) 가 자동 처리하므로 SET 절에서 명시 X.
   insert into friend_ideals (
     friend_id,
     age_from,
@@ -65,8 +67,7 @@ begin
     drinking,
     marriage_timing,
     tattoo,
-    free_text,
-    updated_at
+    free_text
   ) values (
     p_friend_id,
     p_age_from,
@@ -76,8 +77,7 @@ begin
     p_drinking,
     p_marriage_timing,
     p_tattoo,
-    p_free_text,
-    now()
+    p_free_text
   )
   on conflict (friend_id) do update set
     age_from = excluded.age_from,
@@ -87,8 +87,7 @@ begin
     drinking = excluded.drinking,
     marriage_timing = excluded.marriage_timing,
     tattoo = excluded.tattoo,
-    free_text = excluded.free_text,
-    updated_at = now();
+    free_text = excluded.free_text;
 
   -- 1:N 5개: 한 친구 기준 DELETE 후 새 값을 INSERT (replace 패턴)
   delete from friend_ideal_regions where friend_id = p_friend_id;
@@ -118,13 +117,30 @@ begin
 
   delete from friend_ideal_priorities where friend_id = p_friend_id;
   if p_priorities is not null and array_length(p_priorities, 1) is not null then
+    -- priorities 는 (friend_id, category) UNIQUE 제약이 있어 중복 category 가
+    -- 들어오면 RPC 전체 rollback. server-side dedup 으로 client 폼 버그·악성
+    -- POST 모두 방어 — 같은 category 가 두 번 오면 먼저 등장한 ordinality 유지.
     insert into friend_ideal_priorities (friend_id, rank, category)
     select
       p_friend_id,
-      ordinality::smallint,
+      row_number() over (order by first_seen)::smallint as rank,
       category
-    from unnest(p_priorities) with ordinality as t(category, ordinality)
-    where ordinality <= 3;
+    from (
+      select category, min(ordinality) as first_seen
+      from unnest(p_priorities) with ordinality as t(category, ordinality)
+      where category is not null
+      group by category
+    ) deduped
+    order by first_seen
+    limit 3;
   end if;
 end;
 $$;
+
+-- defense in depth — Supabase 의 public schema 신규 function 은 anon/authenticated
+-- 에게 기본 EXECUTE 가 부여된다. 실제 데이터 변경은 RLS deny-all 이 INSERT 단계에서
+-- 막아 안전하지만, RPC POST 자체를 차단해 트랜잭션 진입 비용도 절약한다.
+revoke execute on function upsert_friend_ideal_aggregate(
+  uuid, smallint, smallint, boolean, text, text, text, text, text,
+  text[], text[], text[], text[], text[]
+) from anon, authenticated;

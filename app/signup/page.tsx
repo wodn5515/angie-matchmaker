@@ -8,8 +8,17 @@ export const dynamic = "force-dynamic";
  *
  * Google OAuth 로 인증 → `/auth/callback` → proxy 가드가 신규 가입자면
  * `/onboarding/profile` 로, 기존 승인 가입자면 `/me` 로 라우팅.
+ *
+ * OAuth 실패 시 콜백이 `?error=oauth_failed` 와 함께 /signup 으로 되돌리고
+ * (decisions/007 §D4 + D6 proxy 보존), 이 페이지가 사유를 사용자에게 노출.
  */
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const sp = await searchParams;
+
   return (
     <UserShell>
       <div className="space-y-8">
@@ -33,7 +42,7 @@ export default function SignupPage() {
           </p>
         </section>
 
-        <SignupForm />
+        <SignupForm error={sp.error} />
 
         <p className="text-center text-[11px] text-[var(--color-fg-subtle)] leading-relaxed">
           가입 후에는 운영자의 심사가 있어요.

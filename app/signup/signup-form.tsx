@@ -9,10 +9,19 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
  *
  * `/auth/callback` 으로 콜백을 보내고, 거기서 운영자 / 가입자 분기 후
  * proxy 가드가 적절한 라우트로 redirect 한다 (PRD §5.5).
+ *
+ * `error` prop — server component(SignupPage) 가 `?error=oauth_failed` 등
+ * 검색 파라미터를 넘긴다 (decisions/007 §D4). 사용자에게 사유 안내.
  */
-export function SignupForm() {
+export function SignupForm({ error: serverError }: { error?: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const displayError =
+    error ??
+    (serverError === "oauth_failed"
+      ? "Google 가입에 실패했습니다. 다시 시도해주세요."
+      : null);
 
   const onGoogle = async () => {
     setLoading(true);
@@ -49,9 +58,9 @@ export function SignupForm() {
         <span className="text-base">G</span>
         <span>{loading ? "이동 중…" : "Google 로 가입하기"}</span>
       </Button>
-      {error ? (
+      {displayError ? (
         <p className="text-center text-[11px] text-[var(--color-danger)]">
-          {error}
+          {displayError}
         </p>
       ) : null}
       <p className="text-center text-[11px] text-[var(--color-fg-subtle)]">
