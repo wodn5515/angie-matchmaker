@@ -23,7 +23,7 @@ export default function PendingPage() {
           tone="pending"
           icon="🔍"
           title="운영자가 검토 중입니다"
-          description="추천인 정보 + 본인 프로필을 보고 매칭 풀에 합류시킬지 결정해요. 결과가 나오면 카톡으로 안내드릴게요."
+          description="추천인 정보 + 본인 프로필을 보고 매칭 풀에 합류시킬지 결정해요. 결과가 나오면 운영자가 직접 안내드릴게요."
         />
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 px-5 py-4 text-left text-[12px] text-[var(--color-fg-muted)] space-y-2">
           <p className="text-fg text-sm font-semibold">기다리는 동안 할 수 있는 것</p>
