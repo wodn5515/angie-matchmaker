@@ -164,3 +164,44 @@ worker 가 spec 직접 수정 불가 — test-writer 단발 호출 필요:
 - 010 unified login (이 PR)
 
 병렬 진행되는 self-traits PR 과의 conflict: 매우 작음 (전자는 friends 컬럼 + 비교 뷰, 후자는 라우팅 + auth). `app/me/` 또는 `app/(operator)/` 영역은 self-traits 가 만짐 — unified-login 은 `app/login/` + `app/signup/` + `auth/callback` + `proxy.ts` 만. 양쪽 머지 시점에 충돌 거의 없음.
+
+## TDD 게이트 spec 채택 (test-writer 라운드 1 결과)
+
+test-writer 단발 호출 (커밋 `718ab76`) 결과 전량 채택. 기존 spec 3 파일 갱신 / 신규 0 / 빨강 3 / 회귀 0 (189 passed).
+
+### S1. 갱신 spec
+
+| 파일 | 케이스 변동 |
+|---|---|
+| `tests/unit/auth-callback-redirect.test.ts` | 7 → 7 (완전 교체 — `from` 시그니처 제거) |
+| `tests/unit/proxy.test.ts` | 22 → 26 (`/signup` redirect 호환 + `/me` `/onboarding` 비로그인 분기 갱신) |
+| `tests/unit/proxy-redirect-search.test.ts` | 11 → 11 (`/signup` targetPath 2건 → `/login`) |
+
+### S2. worker 가 채울 인터페이스
+
+```ts
+// lib/auth/callback.ts — from 파라미터 제거
+export type CallbackInput = {
+  result: "ok" | "fail";
+  isOperator: boolean;
+  next: string;
+};
+export function resolveCallbackTarget(input: CallbackInput): string;
+```
+
+### S3. 약화·범위 메모
+
+- **auth-callback-redirect 가 현재 구현으로 런타임 100% pass** — 시그니처가 `from` 인자 안 받아도 같은 분기 작동. 진짜 빨강은 worker 가 시그니처 좁히고 `app/auth/callback/route.ts` 의 `from` 호출 제거할 때 TypeScript 컴파일 단에서. spec 은 "회귀 방어선 + 새 시그니처 강제" 의미. 충분 — `expectTypeOf` 강제는 라운드 2 보류
+- **S4 (로그인 RTL) 생략** — 카피 자체가 010 §D2 자율 영역 + RTL setup 비용 대비 가치 약함
+- **운영자 + `/signup` 진입 케이스 추가** — `/signup` 폐기 후 `PRE_AUTH_PUBLIC` 에서 제거 시 가드 운영자 default 분기가 pass 가 돼 실패 가능 → worker 가 명시적 redirect 분기 추가해야 통과
+
+### S4. worker 프롬프트 필수 사항
+
+- D1: `/signup` 라우트 + 페이지 + signup-form 삭제
+- D2: `/login` 카피 통합 (운영자 + 가입자 모두 환영 톤 — 자율)
+- D3: `auth/callback/route.ts` 의 `from` 처리 제거
+- D4: `resolveCallbackTarget` 시그니처 좁힘 (`from` 제거)
+- proxy.ts `PRE_AUTH_PUBLIC` 에서 `/signup` 제거 + `/signup` 호환 redirect (위 spec 분기)
+- PRD §5 사이트맵 갱신 (§5.1 `/signup` 행 제거, §5.3 `/login` 공용 명시)
+- CLAUDE.md §7 라우팅 / README 사이트맵 동기화
+- 마이그레이션 / 환경 변수 변경 없음
