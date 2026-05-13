@@ -171,12 +171,12 @@ V2.1 신규 RPC function (0004 마이그레이션):
 | `/onboarding/profile` | 가입자 (friends row 없음) | Step 1 (필수: 이름·성별·성취향·추천인) |
 | `/onboarding/preferences` | 가입자 (onboarding_step=2) | Step 2 (이상형, 선택) |
 | `/onboarding/survey` | 가입자 (onboarding_step=3) | Step 3 (연애 성향 테스트, 선택) |
-| `/me` | 가입자 (approved) | 자기 페이지 (대시보드) |
+| `/me` | 가입자 (approved 또는 pending+step=null) | 자기 페이지 (대시보드) — pending 시 상단 배너 |
 | `/me/profile` | 〃 | 본인 프로필 수정 |
 | `/me/preferences` | 〃 | 이상형 수정 |
 | `/me/survey` | 〃 | 설문 진행 / 재진입 |
 | `/me/survey/[chapter]` | 〃 | 챕터 runner (자동 저장) |
-| `/pending` | 가입자 (status=pending) | 심사 대기 안내 |
+| `/pending` | 가입자 (status=pending) | 심사 대기 안내 + `/me/*` 액션 카드 (011 §D3) |
 | `/rejected` | 가입자 (status=rejected) | 가입 거절 안내 |
 | `/login`, `/auth/callback`, `/auth/signout` | — | OAuth (운영자·가입자 공용 단일 진입점 — 010-v2-unified-login) |
 

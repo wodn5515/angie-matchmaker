@@ -3,6 +3,7 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
+import { resolveOnboardingResumeTarget } from "@/lib/auth/onboarding";
 
 /**
  * 가입자(Self-signup user) 세션 헬퍼.
@@ -130,6 +131,11 @@ export async function getCurrentUser(): Promise<UserSession | null> {
  * 010-v2-unified-login: `/signup` 페이지는 폐기됐지만, 이 헬퍼의 redirect 시그니처는
  * `tests/unit/auth-user.test.ts` spec 호환을 위해 `/signup` 그대로 둔다. 실제 사용자
  * 경험은 proxy 가드가 `/signup` → `/login` 으로 한 hop 더 흡수한다 (가드 spec 통과).
+ *
+ * @deprecated 011 §D2 — pending(step=null) 가입자도 `/me/*` 진입을 허용하면서
+ * 새 헬퍼 `requireOnboardedUser()` 로 이전. 신규 호출처는 그 함수를 사용하고,
+ * 본 함수는 외부 spec(`tests/unit/auth-user.test.ts`) 호환을 위해 시그니처 보존.
+ * 호출처가 모두 마이그레이션되면 제거 예정.
  */
 export async function requireApprovedUser(): Promise<UserSession> {
   const { authUser } = await fetchAuthAndOperatorStatus();
@@ -142,6 +148,55 @@ export async function requireApprovedUser(): Promise<UserSession> {
   }
   if (friend.status === "pending") redirect("/pending");
   if (friend.status === "rejected") redirect("/rejected");
+  return {
+    authUserId: authUser.id,
+    email: authUser.email,
+    friendId: friend.id,
+    status: friend.status,
+    onboardingStep: friend.onboarding_step,
+  };
+}
+
+/**
+ * 011 §D2 — `/me/*` 페이지·actions 게이트. status='approved' 또는
+ * (status='pending' + onboarding_step=null) 가입자만 통과.
+ *
+ * `requireApprovedUser` 와 다른 점: 온보딩을 마친 pending(심사 대기) 가입자에게도
+ * `/me/*` 를 열어 안내(`/pending` 페이지) ↔ 동작 mismatch 를 해소한다. 가드만 풀고
+ * 페이지 함수가 그대로면 무한 redirect 회귀 — 두 길을 함께 풀어야 한다 (011 §D2).
+ *
+ * Redirect 표:
+ *   - 비로그인 → /login (010 §D1 통합 진입점)
+ *   - friends row 없음 → /onboarding/profile
+ *   - pending + onboarding_step != null → 이어풀기 (resolveOnboardingResumeTarget)
+ *   - rejected → /rejected
+ *
+ * 반환된 `UserSession.status` 로 페이지 컴포넌트가 "심사 대기 중" 배너를 분기 노출
+ * 가능 (011 §D4).
+ */
+export async function requireOnboardedUser(): Promise<UserSession> {
+  const { authUser } = await fetchAuthAndOperatorStatus();
+  if (!authUser) {
+    redirect("/login");
+  }
+  const friend = await loadOwnFriendRow(authUser.id);
+  if (!friend) {
+    redirect("/onboarding/profile");
+  }
+  if (friend.status === "rejected") {
+    redirect("/rejected");
+  }
+  if (friend.status === "pending" && friend.onboarding_step != null) {
+    const resumeTarget =
+      resolveOnboardingResumeTarget({
+        friend: {
+          status: friend.status,
+          onboarding_step: friend.onboarding_step,
+        },
+      }) ?? "/pending";
+    redirect(resumeTarget);
+  }
+  // 통과: status='approved' 또는 (status='pending' + onboarding_step=null)
   return {
     authUserId: authUser.id,
     email: authUser.email,
