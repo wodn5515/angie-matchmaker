@@ -22,7 +22,9 @@ export function SignupForm() {
       const { error: signinError } = await sb.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          // `?from=signup` 1-bit hint — 콜백이 OAuth 실패 시 /login 대신 /signup 으로
+          // 되돌릴 수 있게 (decisions/007 §D4).
+          redirectTo: `${window.location.origin}/auth/callback?from=signup`,
         },
       });
       if (signinError) {
