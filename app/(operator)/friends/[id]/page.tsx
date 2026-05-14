@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOperator } from "@/lib/auth/operator";
@@ -37,6 +38,7 @@ import {
   approveFriendAction,
   rejectFriendAction,
 } from "./actions";
+import { instagramUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -193,7 +195,28 @@ export default async function FriendDetailPage({
             />
             <Field
               label="인스타그램"
-              value={friend.instagram ?? "—"}
+              value={
+                friend.instagram ? (
+                  (() => {
+                    const url = instagramUrl(friend.instagram);
+                    return url ? (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-pink-300 underline-offset-2 hover:underline"
+                      >
+                        @{friend.instagram.replace(/^@/, "")}
+                        <span aria-hidden className="ml-0.5 text-[10px]">↗</span>
+                      </a>
+                    ) : (
+                      friend.instagram
+                    );
+                  })()
+                ) : (
+                  "—"
+                )
+              }
             />
             <Field
               label="추천인"
@@ -340,7 +363,13 @@ export default async function FriendDetailPage({
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
   return (
     <div>
       <p className="text-[11px] text-[var(--color-fg-muted)]">{label}</p>
