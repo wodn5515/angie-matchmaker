@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, instagramUrl } from "@/lib/utils";
 import {
   type Friend,
   GENDER_LABEL,
@@ -185,7 +185,7 @@ function buildRows(a: Friend, b: Friend): Row[] {
     text("추천인 관계", a.recommender_relation, b.recommender_relation),
   );
   rows.push(tagsRow(a.tags, b.tags));
-  rows.push(text("인스타", a.instagram, b.instagram));
+  rows.push(instagramRow(a.instagram, b.instagram));
   rows.push(notesRow(a.notes, b.notes));
 
   return rows;
@@ -232,6 +232,39 @@ function num(
     label,
     a: aMissing ? <Empty /> : <span>{av}</span>,
     b: bMissing ? <Empty /> : <span>{bv}</span>,
+    matchKind: kind,
+  };
+}
+
+function instagramRow(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): Row {
+  const renderCell = (raw: string | null | undefined) => {
+    if (!raw) return <Empty />;
+    const url = instagramUrl(raw);
+    if (!url) return <span>{raw}</span>;
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-pink-300 underline-offset-2 hover:underline"
+      >
+        @{raw.replace(/^@/, "")}
+        <span aria-hidden className="ml-0.5 text-[10px]">↗</span>
+      </a>
+    );
+  };
+  const aMissing = !a;
+  const bMissing = !b;
+  let kind: Row["matchKind"] = "neutral";
+  if (aMissing && bMissing) kind = "missing";
+  else if (!aMissing && !bMissing && a === b) kind = "same";
+  return {
+    label: "인스타",
+    a: renderCell(a),
+    b: renderCell(b),
     matchKind: kind,
   };
 }
