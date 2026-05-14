@@ -235,12 +235,27 @@ V2.x 에서 추가 폐기된 라우트:
 
 | 변경 대상 | 스킬 | 흐름 |
 |---|---|---|
-| `app/**`, `components/**`, `lib/**`, `supabase/migrations/**` | **`/work`** | 워크트리 → 디자이너·TDD 게이트 → 팀 spawn → peer 검증 → PR |
+| **위험 영역**: 가드 매트릭스 / 인가 헬퍼 / DB cascade / 마이그레이션 / 새 라우트 / 비즈니스 룰 / Server Action / 데이터 모델 | **`/work` (정식)** | 워크트리 → 디자이너·TDD 게이트 → 팀 spawn → peer 검증 → PR |
+| **경량 영역**: lib 의 순수 유틸 함수 + 사용자 가시 카피·스타일·Badge variant 분기 등 시각 변경 위주 | **`/work` 의 경량 경로** | 워크트리 → Lead 단독 작업 → lint + build 검증 → PR (디자이너·TDD·팀·peer 모두 생략) |
 | `README.md`, `CLAUDE.md`, `AGENTS.md`, `docs/**`, `.claude/**`, `.gitignore`, dev 도구 설정, CI 워크플로우 | **`/meta`** | 워크트리 → Lead 단독 작업 → PR (게이트·팀·peer 생략) |
 | 긴급 수정 (`master` 베이스) | **`/hotfix`** | stage 우회 |
 | prod 배포 (`stage` → `master`) | **`/deploy`** | 워크트리 없음 — Lead 가 master..stage diff 분석 후 release PR 본문(변경 요약·배포 전 체크리스트·검증 plan·관련 결정 로그) 자동 작성 + 생성 |
 
-판단 기준: **"이 변경이 사용자가 보는 화면·동작·데이터를 바꾸는가"** — 그러면 `/work`, 아니면 `/meta`. 애매하면 `/work` 가 안전.
+판단 기준: **"이 변경이 사용자가 보는 화면·동작·데이터를 바꾸는가"** — 그러면 `/work` (정식 또는 경량), 아니면 `/meta`. 애매하면 정식 `/work` 가 안전.
+
+### 경량 경로 판정 — 다음을 **모두** 만족할 때만
+
+1. 새 라우트 / Server Action / 새 가드 분기 / 새 마이그레이션 **없음**
+2. 인증·인가·세션·OAuth 흐름 **무변경**
+3. 데이터 모델 / RPC / 검증 스키마 **무변경**
+4. 변경 표면: `lib/utils.ts` 같은 순수 유틸 함수 추가, 또는 `app/**` / `components/**` 의 카피·Badge variant·className 등 시각 표현 변경
+5. lint + build 통과만으로 충분히 회귀 차단 가능 (= 정규식 robust / 인가 매트릭스 같은 회귀 net 가치가 작음)
+
+경량 경로 사례 (참고):
+- PR #28 — `/friends` 카드 Badge variant 분기 + 성별 chip
+- PR #30 — `instagramHandle/instagramUrl` 유틸 + 두 군데 `<a target="_blank">` 처리
+
+위 5개 중 하나라도 의심스러우면 **정식 경로**로 — TDD/peer 검증의 회귀 net 가치가 비용을 초과한다.
 
 자세한 분기 표는 [`AGENTS.md`](./AGENTS.md) §6.
 
