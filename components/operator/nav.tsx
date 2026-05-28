@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 // V2: PRD §5.4 — /surveys / /matches nav 항목 폐기.
 // 표준 설문 편집은 대시보드 "빠른 진입" 또는 /settings 에서 진입.
@@ -52,37 +53,41 @@ export function OperatorNav({ displayName }: { displayName: string }) {
             로그아웃
           </button>
         </form>
+        <ThemeToggle className="ml-1 h-8 w-8" />
       </nav>
-      <button
-        type="button"
-        aria-label="메뉴"
-        onClick={() => setOpen((v) => !v)}
-        className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--color-border)] text-fg"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+      <div className="md:hidden flex items-center gap-1.5">
+        <ThemeToggle />
+        <button
+          type="button"
+          aria-label="메뉴"
+          onClick={() => setOpen((v) => !v)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--color-border)] text-fg"
         >
-          {open ? (
-            <>
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </>
-          ) : (
-            <>
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </>
-          )}
-        </svg>
-      </button>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {open ? (
+              <>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </>
+            ) : (
+              <>
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </>
+            )}
+          </svg>
+        </button>
+      </div>
       {open ? (
         <div className="md:hidden absolute left-0 right-0 top-full mt-px border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur">
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3">

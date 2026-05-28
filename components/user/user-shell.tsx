@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 /**
  * 가입자(self-signup user) 측 페이지 wrapper — 부드러운 핑크 그라데이션 다크 톤.
@@ -19,6 +20,11 @@ export function UserShell({
   return (
     <div className={cn("user-shell min-h-screen w-full", className)}>
       <main className="mx-auto w-full max-w-md px-5 py-8 sm:py-12">
+        {/* flow 배치로 토글 자리를 확보 — absolute 면 /me 배너·onboarding stepper 와
+            360px 에서 겹친다 (PR #33 리뷰 반영). */}
+        <div className="mb-4 flex justify-end">
+          <ThemeToggle />
+        </div>
         {children}
       </main>
     </div>

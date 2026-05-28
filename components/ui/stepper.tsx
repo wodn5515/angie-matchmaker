@@ -69,7 +69,7 @@ export function Stepper({
       </ol>
       <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
         <div
-          className="h-full bg-gradient-to-r from-pink-500 to-pink-400 transition-all"
+          className="h-full bg-gradient-to-r from-pink-500 to-[var(--color-pink-bright)] transition-all"
           style={{
             width: `${steps.length === 0 ? 0 : ((Math.min(currentIndex, steps.length - 1) + 1) / steps.length) * 100}%`,
           }}
