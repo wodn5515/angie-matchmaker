@@ -1,30 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand: Black base + Pink accent */
-  --color-bg: #0a0a0b;
-  --color-surface: #131316;
-  --color-surface-2: #1c1c21;
-  --color-border: #2a2a31;
-  --color-border-strong: #3a3a44;
-  --color-fg: #ededee;
-  --color-fg-muted: #a1a1aa;
-  --color-fg-subtle: #71717a;
-
+  /* ── Brand pink scale ──────────────────────────────────────────────
+     비자명한 불변식 (반드시 유지): pink-100~400 은 "텍스트 액센트" 전용,
+     채움(bg/border/ring/gradient)은 pink-500 / pink-600 / pink-bright 만 쓴다.
+     → 즉 text-pink-* 만 100~400 을 쓰고, bg/from/to/via/border/ring-pink-* 는
+       절대 100~400 을 쓰지 않는다 (PR #33 리뷰에서 채움 3곳을 pink-bright 로 정리).
+     이유: 텍스트 스텝(100~400)은 배경 대비를 위해 테마마다 명도를 뒤집기 때문:
+       - 라이트(기본): 텍스트 핑크 = 진한 핑크 (연핑크/흰 배경 위에서 읽힘)
+       - 다크(.dark):  텍스트 핑크 = 밝은 핑크 (어두운 배경 위에서 읽힘)
+     채움 스텝(500/600/bright)은 흰 글자를 얹는 브랜드 면이라 양 테마 공통(상수). */
   --color-pink-50: #fff1f5;
-  --color-pink-100: #ffe1ec;
-  --color-pink-200: #ffc2d8;
-  --color-pink-300: #ff94bb;
-  --color-pink-400: #ff5e95;
-  --color-pink-500: #ff2d7a;
-  --color-pink-600: #ed1166;
+  --color-pink-100: #9d0a49; /* 텍스트 전용 — 라이트: 진한 핑크 */
+  --color-pink-200: #ad0b50;
+  --color-pink-300: #be0e5c;
+  --color-pink-400: #c50951; /* 가장 흔한 링크/아이콘 액센트 (텍스트 전용) */
+  --color-pink-500: #ff2d7a; /* 채움/보더 — 양 테마 공통 */
+  --color-pink-600: #ed1166; /* 채움 active(누름) — 양 테마 공통 */
+  /* 채움 hover·그라데이션의 "밝은 끝" 전용 상수(= 다크 pink-400 값). 텍스트 스텝
+     pink-400 이 라이트에서 진해지므로, 밝은 핑크 채움이 필요한 곳은 이 상수를 쓴다. */
+  --color-pink-bright: #ff5e95;
   --color-pink-700: #c50951;
   --color-pink-800: #a3094a;
   --color-pink-900: #870b41;
 
-  --color-success: #34d399;
-  --color-danger: #f87171;
-  --color-warn: #fbbf24;
+  /* ── Neutrals (LIGHT = 기본 테마) ─────────────────────────────────── */
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f4f5;
+  --color-surface-hover: #e8e8ec; /* secondary 버튼 hover — 라이트: 더 어둡게 */
+  --color-border: #e4e4e7;
+  --color-border-strong: #d4d4d8;
+  --color-fg: #18181b;
+  --color-fg-muted: #52525b;
+  --color-fg-subtle: #71717a;
+
+  --color-success: #059669;
+  --color-danger: #dc2626;
+  --color-warn: #d97706;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
@@ -33,6 +46,33 @@
 }
 
 :root {
+  color-scheme: light;
+}
+
+/* ── DARK 테마 오버라이드 ───────────────────────────────────────────────
+   html.dark 일 때만 발화. 토큰 값만 갈아끼우면 var(--color-*) 를 쓰는 전 컴포넌트가
+   따라온다 (루트 레이아웃의 쿠키 기반 초기 적용 + ThemeToggle 런타임 토글).
+   pink-500/600 은 양 테마 공통이라 오버라이드 대상에서 제외. */
+.dark {
+  --color-pink-100: #ffe1ec;
+  --color-pink-200: #ffc2d8;
+  --color-pink-300: #ff94bb;
+  --color-pink-400: #ff5e95;
+
+  --color-bg: #0a0a0b;
+  --color-surface: #131316;
+  --color-surface-2: #1c1c21;
+  --color-surface-hover: #23232b;
+  --color-border: #2a2a31;
+  --color-border-strong: #3a3a44;
+  --color-fg: #ededee;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-warn: #fbbf24;
+
   color-scheme: dark;
 }
 
@@ -112,6 +152,21 @@ body {
     background-color: color-mix(in srgb, var(--color-fg-muted) 6%, transparent);
     border-color: var(--color-border);
   }
+}
+
+/* ThemeToggle 아이콘 전환 — `.dark` 셀렉터로만 제어해 hydration mismatch 회피.
+   라이트(기본): 달 아이콘 노출(탭 → 다크). 다크: 해 아이콘 노출(탭 → 라이트). */
+.theme-toggle-sun {
+  display: none;
+}
+.theme-toggle-moon {
+  display: block;
+}
+.dark .theme-toggle-moon {
+  display: none;
+}
+.dark .theme-toggle-sun {
+  display: block;
 }
 
 /* Reduced motion */

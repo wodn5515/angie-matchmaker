@@ -10,9 +10,9 @@
 - **자기 페이지** — 가입자는 `/me` 에서 본인 프로필 / 이상형 / 연애 성향 테스트 응답을 언제든 수정. 심사 대기 중이어도 `/me/*` 진입 가능 (상단 배너로 상태 안내). 본문 마지막 "위험 영역" 에서 본인 이름 confirm 후 계정 hard delete 가능 (자식 6 테이블 + auth.users 모두 cascade 정리)
 - **1:1 비교 뷰** — 메타데이터 비교 + **이상형 양방향 매칭** (A→B / B→A, 같음/일부/다름/중립 색상 단서, 흡연·음주·결혼관·문신 포함 8 항목) + 연애 성향 테스트 비교
 - **Pair 노트장** — 비교 메모 + 매칭 회고 (`introduced`, `outcome`, `outcome_memo`) 운영자 본인 회고용
-- **Black + Pink 다크 톤** — 운영자 측은 Linear / Vercel admin 결, 가입자 측은 부드러운 그라데이션 + 게이미피케이션
+- **라이트/다크 테마** — 기본 라이트, 우상단·nav 토글로 다크 전환 (쿠키 저장, 깜빡임 없음). Pink accent + 운영자 측 Linear / Vercel admin 결, 가입자 측 부드러운 그라데이션 + 게이미피케이션
 
-자세한 사양은 [`docs/PRD.md`](./docs/PRD.md), 설계 결정은 [`docs/decisions/`](./docs/decisions/) (`000`~`014`) 참고.
+자세한 사양은 [`docs/PRD.md`](./docs/PRD.md), 설계 결정은 [`docs/decisions/`](./docs/decisions/) (`000`~`015`) 참고.
 
 ## 🛠 기술 스택
 
