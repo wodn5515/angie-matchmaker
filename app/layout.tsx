@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
+import { THEME_COOKIE } from "@/lib/theme";
 import "./globals.css";
-
-/** ThemeToggle 가 쓰는 쿠키 이름. 값은 "dark" | "light". 없으면 라이트(기본). */
-export const THEME_COOKIE = "theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

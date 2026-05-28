@@ -13,12 +13,14 @@
 
 1. **기본 = 라이트, 다크는 `.dark` 클래스 오버라이드.** `@theme` 의 토큰 값을 라이트 기본값으로 재정의하고, `html.dark` 일 때만 발화하는 `.dark { … }` 블록에서 기존 다크 값으로 오버라이드. `:root { color-scheme: light }` / `.dark { color-scheme: dark }`.
 
-2. **핑크 스케일의 명도를 테마별로 뒤집는다 (비자명).** 코드베이스 조사 결과 핑크 토큰의 쓰임이 깔끔히 갈려 있었다:
+2. **핑크 스케일의 명도를 테마별로 뒤집는다 (비자명).** 핑크 토큰의 쓰임이 갈려 있다:
    - `pink-100~400` → **텍스트 액센트 전용** (`text-pink-*` 는 최대 400)
-   - `pink-500/600` → **채움(bg)·보더·링 전용** (`bg/border/ring-pink-*` 는 최소 500)
+   - 채움(`bg`/`from`/`to`/`via`/`border`/`ring`) → **`pink-500` / `pink-600` / `pink-bright` 상수만**
 
-   텍스트 스텝은 "어두운 배경 위 밝은 핑크" 로 튜닝돼 있어 라이트 배경에선 그대로 두면 연핑크/흰 배경 위에서 거의 안 보인다. 그래서 **라이트에선 텍스트 스텝(100~400)을 진한 핑크로**, **다크(.dark)에선 밝은 핑크로** 둔다. 채움 스텝(500/600)은 흰 글자를 얹는 브랜드 버튼이라 양 테마 공통(오버라이드 X).
-   → 이 분리 덕에 **컴포넌트 40여 곳을 한 줄도 안 건드리고** 라이트 가독성을 토큰만으로 확보.
+   텍스트 스텝은 "어두운 배경 위 밝은 핑크" 로 튜닝돼 있어 라이트 배경에선 그대로 두면 연핑크/흰 배경 위에서 거의 안 보인다. 그래서 **라이트에선 텍스트 스텝(100~400)을 진한 핑크로**, **다크(.dark)에선 밝은 핑크로** 둔다. 채움 스텝은 흰 면/밝은 핑크라 양 테마 공통(오버라이드 X).
+   → 이 분리 덕에 **컴포넌트 40여 곳의 텍스트 핑크를 한 줄도 안 건드리고** 라이트 가독성을 토큰만으로 확보.
+
+   ⚠️ 초기 sweep 은 `bg-/border-/ring-/text-pink-*` 만 grep 해 **gradient stop(`to-pink-400`) 과 `bg-pink-400` hover 를 놓쳤다** — PR #33 리뷰에서 채움으로 `pink-400` 을 쓰는 3곳(primary 버튼 hover + 진행바 2개)이 라이트에서 어두운 와인으로 렌더되는 회귀가 잡혔다. 밝은 핑크 채움 상수 `--color-pink-bright`(#ff5e95 = 다크 pink-400 값) 를 신설해 3곳을 이전(`pink-400` 채움)→`pink-bright` 로 정리, 불변식을 *실제로* 성립시켰다 (아래 "리뷰 응대" 참고).
 
 3. **쿠키 기반 무(無)깜빡임 초기화.** 토글이 `theme` 쿠키(1년, SameSite=Lax)에 값을 쓰고, 루트 레이아웃(`app/layout.tsx`)이 `await cookies()` 로 읽어 SSR 단계에서 `<html>` 에 `dark` 클래스를 미리 박는다. 인라인 스크립트 + localStorage 방식의 FOUC 가 없다.
 
@@ -49,3 +51,13 @@
 - 앞으로 새 컴포넌트는 `var(--color-*)` 토큰만 쓰면 자동으로 양 테마 대응. 핑크를 **텍스트**로 쓰면 `pink-100~400`, **채움/보더**로 쓰면 `pink-500/600` 규칙을 지켜야 라이트 가독성이 유지된다 (globals.css 주석 참고).
 - CLAUDE.md §5(디자인 시스템)의 "Black base + Pink accent 다크 톤" 서술은 이제 "라이트 기본 + 다크 토글" 로 바뀌었으므로 본 PR 에서 동기화.
 - 친구 측 `.user-shell` 핑크 그라데이션은 `var(--color-bg)` 기반이라 라이트에선 흰 바탕 위 부드러운 핑크 워시로 자연 전환된다.
+
+## 리뷰 응대 (2026-05-28, PR #33)
+
+리뷰어(운영자)가 5건을 지적. Lead 자율 판단으로 다음과 같이 처리:
+
+- 🟡 **(fix) `pink-400` 채움 3곳 라이트 회귀** — 위 §2 ⚠️ 참고. `--color-pink-bright`(상수 #ff5e95) 신설 후 `button.tsx`(primary hover) / `chapter-runner.tsx`(진행바) / `stepper.tsx`(진행바) 의 `pink-400` 채움을 `pink-bright` 로 교체. 양 테마에서 의도(밝은 핑크) 보존 + 불변식 성립. word-boundary 재-grep 으로 100~400 채움 사용이 0 임을 확인.
+- 💬 **(fix) ThemeToggle 의 UserShell 겹침** — `absolute right-4 top-4` 는 `/me` 배너·onboarding stepper 와 360px 에서 겹침(분석상 `/me` 배너 위에 떠 보이고 stepper 와 ~7px 여유). flow 배치(상단 우측 정렬 row)로 바꿔 토글 자리를 확보. `/login` 은 세로 중앙 카드라 우상단이 비어 absolute 유지.
+- 🟢 **(fix) `THEME_COOKIE` 미사용** — server-free 공유 모듈 `lib/theme.ts` 로 추출, `layout.tsx`(SSR) 와 `theme-toggle.tsx`(client) 가 같은 상수 참조. 쿠키명 변경 시 조용히 깨지는 footgun 제거.
+- 🟢 **(fix) 쿠키 Secure 미설정** — `location.protocol === "https:"` 일 때만 `; secure` 부여. localhost(http) 에선 빼서 dev 테마 저장 유지.
+- 🟢 **(보류) `viewport.themeColor` 고정** — 정적 export 라 `prefers-color-scheme` 분기가 어렵고 다크 모드 브라우저 상단 바 색만 라이트로 남는 경미한 cosmetic. 리뷰어도 "그대로 둬도 무방" 판단. 비용 대비 가치가 낮아 의도적 보류.

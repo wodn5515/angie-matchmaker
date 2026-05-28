@@ -216,7 +216,7 @@ function ProgressHeader({
       </div>
       <div className="mt-2 h-1.5 rounded-full bg-[var(--color-surface-2)] overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-pink-500 to-pink-400 transition-all duration-500"
+          className="h-full bg-gradient-to-r from-pink-500 to-[var(--color-pink-bright)] transition-all duration-500"
           style={{ width: `${pct}%` }}
         />
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { THEME_COOKIE } from "@/lib/theme";
 
 /**
  * 라이트/다크 테마 토글 버튼.
@@ -19,7 +20,9 @@ export function ThemeToggle({ className }: { className?: string }) {
     const root = document.documentElement;
     const next = root.classList.contains("dark") ? "light" : "dark";
     root.classList.toggle("dark", next === "dark");
-    document.cookie = `theme=${next}; path=/; max-age=31536000; samesite=lax`;
+    // localhost(http)에서는 Secure 를 빼야 쿠키가 저장된다. prod(https)에서만 Secure.
+    const secure = location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `${THEME_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax${secure}`;
   }
 
   return (

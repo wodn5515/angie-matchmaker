@@ -18,9 +18,13 @@ export function UserShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("user-shell relative min-h-screen w-full", className)}>
-      <ThemeToggle className="absolute right-4 top-4 z-20" />
+    <div className={cn("user-shell min-h-screen w-full", className)}>
       <main className="mx-auto w-full max-w-md px-5 py-8 sm:py-12">
+        {/* flow 배치로 토글 자리를 확보 — absolute 면 /me 배너·onboarding stepper 와
+            360px 에서 겹친다 (PR #33 리뷰 반영). */}
+        <div className="mb-4 flex justify-end">
+          <ThemeToggle />
+        </div>
         {children}
       </main>
     </div>
