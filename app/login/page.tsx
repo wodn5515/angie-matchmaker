@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getOperatorOrNull } from "@/lib/auth/operator";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LoginForm } from "./login-form";
 
 export const metadata = { title: "matchmaker 시작하기" };
@@ -24,7 +25,8 @@ export default async function LoginPage({
   if (session) redirect("/");
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-12">
+    <main className="relative min-h-screen flex items-center justify-center px-4 py-12">
+      <ThemeToggle className="absolute right-4 top-4" />
       <div className="w-full max-w-sm">
         <div className="text-center mb-8 space-y-3">
           <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-pink-500/15 text-pink-400 text-2xl">

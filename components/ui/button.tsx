@@ -10,7 +10,7 @@ const buttonVariants = cva(
         primary:
           "bg-pink-500 text-white hover:bg-pink-400 active:bg-pink-600",
         secondary:
-          "bg-[var(--color-surface-2)] text-fg hover:bg-[#23232b] border border-[var(--color-border)]",
+          "bg-[var(--color-surface-2)] text-fg hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)]",
         outline:
           "border border-[var(--color-border-strong)] text-fg hover:bg-[var(--color-surface)]",
         ghost: "text-fg hover:bg-[var(--color-surface)]",

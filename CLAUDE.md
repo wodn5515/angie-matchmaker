@@ -68,7 +68,7 @@ matchmaker/
 │   └── auth/            # OAuth callback / signout
 ├── components/
 │   ├── ui/              # 자체 UI 프리미티브 (Button/Card/Input/Badge/Empty/Stepper/
-│   │                    #  TabBar/MultiSelectChip/RangeSlider/RankingPicker/Field)
+│   │                    #  TabBar/MultiSelectChip/RangeSlider/RankingPicker/Field/ThemeToggle)
 │   ├── operator/        # 운영자 도메인 (Nav/FriendForm/SurveyEditor/AnswerView/
 │   │                    #  SurveysTabs/FriendsStatusTabs/FriendIdealSection/
 │   │                    #  IdealMatchRow/ReviewActions/DashboardWidgets)
@@ -92,26 +92,25 @@ matchmaker/
 
 ## 5. 디자인 시스템
 
-PRD §6 + 결정 로그 기준. **Black base + Pink accent 다크 톤**. 두 청중에 각기 다른 결.
+PRD §6 + 결정 로그 기준. **Pink accent + 라이트/다크 전환** (기본 라이트, `.dark` 클래스 오버라이드 — 015). 두 청중에 각기 다른 결.
 
 ```css
-/* app/globals.css @theme — 발췌 */
+/* app/globals.css — @theme = 라이트 기본값, .dark = 다크 오버라이드 (발췌) */
 @theme {
-  --color-bg: #0a0a0b;
-  --color-surface: #131316;
-  --color-surface-2: #1c1c21;
-  --color-fg: #ededee;
-  --color-fg-muted: #a1a1aa;
-  --color-fg-subtle: #71717a;
-  --color-pink-400: #ff5e95;
-  --color-pink-500: #ff2d7a;
-  --color-success: #34d399;
-  --color-danger: #f87171;
-  --color-warn: #fbbf24;
+  --color-bg: #fafafa;        /* .dark: #0a0a0b */
+  --color-surface: #ffffff;   /* .dark: #131316 */
+  --color-surface-2: #f4f4f5; /* .dark: #1c1c21 */
+  --color-fg: #18181b;        /* .dark: #ededee */
+  --color-fg-muted: #52525b;  /* .dark: #a1a1aa */
+  /* 핑크 텍스트 스텝(100~400)은 테마별로 명도 반전 — 라이트=진한 핑크 / 다크=밝은 핑크.
+     채움 스텝 pink-500/600 은 양 테마 공통. 상세 불변식은 globals.css 주석 + 015 참고 */
+  --color-pink-400: #c50951;  /* .dark: #ff5e95 (텍스트 액센트) */
+  --color-pink-500: #ff2d7a;  /* 양 테마 공통 (채움/보더) */
 }
 ```
 
-- **운영자 화면**: Linear / Vercel admin 톤의 미니멀 다크. 핑크는 CTA·강조에만
+- **테마 전환**: `ThemeToggle` (`components/ui/theme-toggle.tsx`) 가 `theme` 쿠키 + `html.dark` 토글. 루트 레이아웃이 쿠키를 SSR 단계에서 읽어 FOUC 없음. 운영자 nav·가입자 `UserShell`·`/login` 에 배치 (015)
+- **운영자 화면**: Linear / Vercel admin 톤의 미니멀. 핑크는 CTA·강조에만
 - **친구 화면**: 챕터 클리어 + 심리테스트 결과 톤. `friend-shell` 클래스로 부드러운 핑크 그라데이션
 - **모바일 우선** — 360px 폭에서 깨지지 않는 게 검수 기준
 - 브레이크포인트: `sm` 640 / `md` 768 / `lg` 1024

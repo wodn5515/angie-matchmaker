@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 /**
  * 가입자(self-signup user) 측 페이지 wrapper — 부드러운 핑크 그라데이션 다크 톤.
@@ -17,7 +18,8 @@ export function UserShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("user-shell min-h-screen w-full", className)}>
+    <div className={cn("user-shell relative min-h-screen w-full", className)}>
+      <ThemeToggle className="absolute right-4 top-4 z-20" />
       <main className="mx-auto w-full max-w-md px-5 py-8 sm:py-12">
         {children}
       </main>
